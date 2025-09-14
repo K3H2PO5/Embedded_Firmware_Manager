@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- 专业级图标设计 - 无文字版本 -->
+  <defs>
+    <!-- 深蓝色渐变背景 -->
+    <radialGradient id="bgGradient" cx="50%" cy="30%" r="80%">
+      <stop offset="0%" style="stop-color:#1E3A8A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- 芯片渐变 -->
+    <linearGradient id="chipGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F8FAFC;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E2E8F0;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 金属质感渐变 -->
+    <linearGradient id="metalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#94A3B8;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#64748B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#475569;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 电路板绿色 -->
+    <linearGradient id="circuitGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景圆形 -->
+  <circle cx="128" cy="128" r="120" fill="url(#bgGradient)" stroke="#0F172A" stroke-width="2"/>
+  
+  <!-- 主芯片 - 更专业的矩形设计 -->
+  <rect x="70" y="90" width="116" height="76" rx="4" ry="4" fill="url(#chipGradient)" stroke="#334155" stroke-width="1"/>
+  
+  <!-- 芯片引脚 - 更精细的设计 -->
+  <rect x="60" y="95" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="60" y="105" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="60" y="115" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="60" y="125" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="60" y="135" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="60" y="145" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="60" y="155" width="6" height="2" fill="url(#metalGradient)"/>
+  
+  <rect x="190" y="95" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="190" y="105" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="190" y="115" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="190" y="125" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="190" y="135" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="190" y="145" width="6" height="2" fill="url(#metalGradient)"/>
+  <rect x="190" y="155" width="6" height="2" fill="url(#metalGradient)"/>
+  
+  <!-- 芯片内部电路 - 专业PCB风格 -->
+  <rect x="85" y="110" width="86" height="36" rx="2" ry="2" fill="#1E293B" opacity="0.8"/>
+  
+  <!-- 电路走线 -->
+  <rect x="90" y="115" width="76" height="1" fill="url(#circuitGradient)"/>
+  <rect x="90" y="125" width="76" height="1" fill="url(#circuitGradient)"/>
+  <rect x="90" y="135" width="76" height="1" fill="url(#circuitGradient)"/>
+  
+  <!-- 芯片核心 -->
+  <rect x="110" y="120" width="36" height="16" rx="1" ry="1" fill="url(#circuitGradient)"/>
+  <rect x="120" y="125" width="16" height="6" fill="#FFFFFF" opacity="0.9"/>
+  
+  <!-- 右下角专业齿轮 -->
+  <g transform="translate(190, 190)">
+    <circle cx="0" cy="0" r="18" fill="url(#metalGradient)" stroke="#334155" stroke-width="1"/>
+    <circle cx="0" cy="0" r="8" fill="#1E293B"/>
+    <!-- 齿轮齿 - 更精细 -->
+    <rect x="-1" y="-22" width="2" height="8" fill="#475569"/>
+    <rect x="-1" y="14" width="2" height="8" fill="#475569"/>
+    <rect x="-22" y="-1" width="8" height="2" fill="#475569"/>
+    <rect x="14" y="-1" width="8" height="2" fill="#475569"/>
+    <rect x="-16" y="-16" width="2" height="6" fill="#475569" transform="rotate(45)"/>
+    <rect x="14" y="14" width="2" height="6" fill="#475569" transform="rotate(45)"/>
+    <rect x="16" y="-16" width="2" height="6" fill="#475569" transform="rotate(-45)"/>
+    <rect x="-18" y="14" width="2" height="6" fill="#475569" transform="rotate(-45)"/>
+  </g>
+  
+  <!-- 左上角发布箭头 - 更简洁 -->
+  <g transform="translate(85, 70)">
+    <path d="M0,0 L18,9 L0,18 L6,9 Z" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M15,9 L30,9" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+  </g>
+</svg>

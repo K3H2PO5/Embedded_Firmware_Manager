@@ -1,0 +1,22 @@
+{
+    "compile_tool": "IAR",
+    "iar_installation_path": "",
+    "mdk_installation_path": "",
+    "project_path": "E:/YourProject",
+    "fw_publish_directory": "./fw_publish",
+    "remote_publish_directory": "",
+    "enable_remote_publish": false,
+    "info_file": "main.c",
+    "language": "zh_CN",
+    "enable_git_commit_id": true,
+    "enable_file_size": true,
+    "enable_bin_checksum": true,
+    "enable_hash_value": true,
+    "git_commit_id_keyword": "__git_commit_id",
+    "file_size_keyword": "__file_size",
+    "bin_checksum_keyword": "__bin_checksum",
+    "hash_value_keyword": "__hash_value",
+    "firmware_version_keyword": "__Firmware_Version",
+    "add_timestamp_to_filename": false,
+    "publish_out_file": false
+}

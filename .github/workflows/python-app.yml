@@ -1,0 +1,61 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ release ]
+  pull_request:
+    branches: [ release ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        
+    - name: Test imports
+      run: |
+        python -c "import main"
+        python -c "from tool_version_manager import ToolVersionManager"
+        python -c "from file_manager import FileManager"
+        echo "All imports successful"
+        
+    - name: Build executable
+      run: |
+        python build_exe.py
+        echo "Build completed"
+        
+    - name: List files
+      run: |
+        echo "Release directory:"
+        if (Test-Path "release") { 
+          Get-ChildItem "release" -Recurse | Select-Object Name, Length
+          echo "Release directory file count: $((Get-ChildItem "release" -Recurse).Count)"
+        } else { echo "Release directory not found" }
+        echo "Dist directory:"
+        if (Test-Path "dist") { 
+          Get-ChildItem "dist" -Recurse | Select-Object Name, Length
+          echo "Dist directory file count: $((Get-ChildItem "dist" -Recurse).Count)"
+        } else { echo "Dist directory not found" }
+        echo "Current working directory:"
+        Get-Location
+        echo "All files in current directory:"
+        Get-ChildItem | Select-Object Name, Length
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: IAR-Firmware-Publish-Tool
+        path: release/*.exe
+        retention-days: 30

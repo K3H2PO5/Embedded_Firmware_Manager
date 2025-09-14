@@ -1,93 +1,132 @@
-# Embedded_Firmware_Manager
+# 嵌入式固件管理工具 / Embedded Firmware Manager
+
+[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](docs/LICENSE.md)
+[![Windows](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://www.microsoft.com/windows)
+[![IAR](https://img.shields.io/badge/IAR-Embedded%20Workbench-orange.svg)](https://www.iar.com/iar-embedded-workbench/)
+[![MDK](https://img.shields.io/badge/MDK-Keil%20uVision-blue.svg)](https://www.keil.com/)
+
+一个支持多种嵌入式开发工具链的固件管理工具，支持IAR和MDK项目编译、版本管理、Git集成和二进制文件修改。
+
+A firmware management tool supporting multiple embedded development toolchains, including IAR and MDK project compilation, version management, Git integration, and binary file modification.
 
 
+### 主要功能 / Main Features
 
-## Getting started
+#### 中文功能说明
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- 📦 **版本管理** - 版本号管理，自动递增/手动设置版本号
+- 🔄 **Git集成** - 自动提交版本更改，获取commit信息，支持自定义提交信息
+- 🔧 **多工具链支持** - 支持IAR Embedded Workbench和MDK (Keil uVision)项目编译
+- 🛠️ **二进制修改** - 自动修改bin文件内容，在指定地址注入File Size、CRC、Hash和Git Commit信息
+- 📝 **发布说明** - 自动生成和管理Release Notes
+- 📁 **文件管理** - 自动重命名、复制和发布固件文件，支持本地和远程发布
+- 🚀 **一键执行** - 全流程自动化，从Git检查到文件发布
+- 🌐 **多语言支持** - 支持中文、繁体中文、英文界面
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+#### English Features
 
-## Add your files
+- 📦 **Version Management** - Version number management, automatically increment/manually set version numbers
+- 🔄 **Git Integration** - Automatically commit version changes, retrieve commit information, support custom commit messages
+- 🔧 **Multi-toolchain Support** - Supports IAR Embedded Workbench and MDK (Keil uVision) project compilation
+- 🛠️ **Binary Modification** - Automatically modify bin file content, inject File Size, CRC, Hash and Git Commit information at specified addresses
+- 📝 **Release Notes** - Automatically generate and manage Release Notes
+- 📁 **File Management** - Automatically rename, copy and publish firmware files, supports local and remote publishing
+- 🚀 **One-Click Execution** - Full workflow automation from Git check to file publishing
+- 🌐 **Multi-Language Support** - Supports Chinese, Traditional Chinese, and English interfaces
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## 界面预览 / Interface Preview
 
+### 工具演示 / Tool Demo
+![嵌入式固件管理工具演示](./docs/screenshot/efm.gif)
+
+### 主界面 / Main Interface
+![主界面](./docs/screenshot/main_page.png)
+
+### 设置界面 / Settings Interface
+![设置界面](./docs/screenshot/setting.png)
+![设置界面2](./docs/screenshot/setting2.png)
+
+### 编译过程 / Compilation Process
+![编译过程](./docs/screenshot/compile.png)
+
+
+### 提交信息 / Commit Information
+![提交信息](./docs/screenshot/commit%20info.png)
+
+### 完成界面 / Finish Interface
+![完成界面](./docs/screenshot/finish.png)
+![完成界面2](./docs/screenshot/finish2.png)
+
+### 发布说明 / Release Notes
+![发布说明](./docs/screenshot/release%20note.png)
+
+
+### 二进制文件修改 / Binary File Modification
+![二进制文件修改](./docs/screenshot/bin%20file.png)
+
+## 重要说明 / Important Notes
+
+### Hash功能状态 / Hash Function Status
+hash功能尚未实现
+
+### IAR/MDK配置要求 / IAR/MDK Configuration Requirements
+
+IAR/MDK需要设置输出bin文件，使用本地的icf/sct文件
+
+$K\ARM\ARMCC\bin\fromelf.exe --bin -o "$L@L.bin" "$L@L.axf"
+
+#### IAR配置示例 / IAR Configuration Example
+![IAR Bin文件设置](./docs/screenshot/iar_bin.png)
+![IAR ICF文件设置](./docs/screenshot/iar_icf.png)
+
+#### MDK配置示例 / MDK Configuration Example
+![MDK Bin文件设置](./docs/screenshot/mdk_bin.png)
+![MDK SCT文件设置](./docs/screenshot/mdk_sct.png)
+
+## 快速开始 / Quick Start
+
+### 安装和运行 / Installation and Running
+
+1. **克隆仓库** / **Clone repository**：
+```bash
+git clone https://github.com/yourusername/iar-firmware-publish-tool.git
+cd iar-firmware-publish-tool
 ```
-cd existing_repo
-git remote add origin http://192.10.135.123:8880/Active/Embedded_Firmware_Manager.git
-git branch -M main
-git push -uf origin main
+
+2. **安装依赖** / **Install dependencies**：
+```bash
+pip install -r requirements.txt
 ```
 
-## Integrate with your tools
+3. **运行程序** / **Run the program**：
+```bash
+python main.py
+```
 
-- [ ] [Set up project integrations](http://192.10.135.123:8880/Active/Embedded_Firmware_Manager/-/settings/integrations)
 
-## Collaborate with your team
+## 文档 / Documentation
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+- 📖 [功能概览](./docs/OVERVIEW.md) - 完整的功能说明和界面展示
+- 🚀 [快速开始指南](./docs/QUICKSTART.md) - 5分钟快速上手
+- 👤 [用户指南](./docs/USER_GUIDE.md) - 详细的使用说明和最佳实践
+- 📋 [更新日志](./docs/CHANGELOG.md) - 版本更新历史
 
-## Test and Deploy
+## 系统要求 / System Requirements
 
-Use the built-in continuous integration in GitLab.
+- Windows 10/11
+- Python 3.7+
+- IAR Embedded Workbench 8.x 或 MDK (Keil uVision) 5.x
+- Git
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+## 许可证 / License
 
-***
+本项目采用 MIT 许可证 - 查看 [LICENSE](./docs/LICENSE.md) 文件了解详情。
 
-# Editing this README
+This project is licensed under the MIT License - see the [LICENSE](./docs/LICENSE.md) file for details.
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+## 联系方式 / Contact
 
-## Suggestions for a good README
+如有问题，请提交Issue或联系开发者。
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+If you have any questions, please submit an Issue or contact the developer.

@@ -1,0 +1,32 @@
+{
+    "binary_settings": {
+        "firmware_version_offset": 0,
+        "git_commit_id_offset": 0,
+        "file_size_offset": 0,
+        "bin_checksum_offset": 0,
+        "commit_id_size": 7,
+        "crc_size": 4,
+        "reserved_area_size": 512
+    },
+    "git_settings": {
+        "check_uncommitted_changes": true,
+        "auto_commit": false,
+        "commit_message_template": "Auto build: {timestamp}"
+    },
+    "build_settings": {
+        "build_configuration": "Debug",
+        "clean_before_build": false,
+        "timeout_seconds": 300
+    },
+    "ui_settings": {
+        "window_title": "IAR固件发布工具",
+        "window_size": "1000x700",
+        "theme": "default"
+    },
+    "version_settings": {
+        "version_pattern": "V(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)",
+        "max_version_parts": [9, 9, 9, 9],
+        "auto_increment": true,
+        "keep_firmware_count": 10
+    }
+}

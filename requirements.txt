@@ -1,0 +1,22 @@
+# Python依赖包
+tkinter  # GUI界面（Python内置）
+subprocess  # 系统命令调用（Python内置）
+os  # 操作系统接口（Python内置）
+sys  # 系统相关参数和函数（Python内置）
+datetime  # 日期时间处理（Python内置）
+hashlib  # 哈希算法（Python内置）
+struct  # 二进制数据处理（Python内置）
+pathlib  # 路径处理（Python内置）
+json  # JSON处理（Python内置）
+logging  # 日志记录（Python内置）
+threading  # 多线程（Python内置）
+queue  # 队列（Python内置）
+zlib  # CRC32计算（Python内置）
+
+# 第三方包
+loguru>=0.7.0  # 日志记录库
+lxml>=4.9.0  # XML解析库（用于解析IAR和MDK项目文件）
+# gitpython>=3.1.0  # Git操作（可选，使用subprocess调用git命令）
+
+# 打包相关依赖
+pyinstaller>=5.0  # 用于打包成exe文件
