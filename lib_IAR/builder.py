@@ -48,7 +48,7 @@ class IARBuilder:
         # 验证路径
         logger.info(f"IAR可执行文件: {self.iar_exe_path}")
         logger.info(f"IAR工作区文件: {self.workspace_path}")
-        logger.info(f"IAR项目文件: {self.project_path}")
+        logger.info(f"IAR项目文件: {self.iar_project_path}")
         logger.info(f"输出bin文件: {self.output_bin_path}")
         self._validate_paths()
         self._check_permissions()
@@ -105,8 +105,8 @@ class IARBuilder:
             logger.warning(f"IAR工作区文件不存在: {self.workspace_path}")
         
         # 检查项目文件
-        if self.project_path and not os.path.exists(self.project_path):
-            logger.warning(f"IAR项目文件不存在: {self.project_path}")
+        if self.iar_project_path and not os.path.exists(self.iar_project_path):
+            logger.warning(f"IAR项目文件不存在: {self.iar_project_path}")
     
     def _check_permissions(self):
         """检查权限"""
@@ -117,8 +117,8 @@ class IARBuilder:
                     logger.warning(f"IAR可执行文件没有执行权限: {self.iar_exe_path}")
             
             # 检查项目目录权限
-            if self.project_path and os.path.exists(self.project_path):
-                project_dir = os.path.dirname(self.project_path)
+            if self.iar_project_path and os.path.exists(self.iar_project_path):
+                project_dir = os.path.dirname(self.iar_project_path)
                 if not os.access(project_dir, os.W_OK):
                     logger.warning(f"项目目录没有写权限: {project_dir}")
             
@@ -159,12 +159,12 @@ class IARBuilder:
             logger.info(f"IAR可执行文件大小: {stat.st_size} 字节")
             logger.info(f"IAR可执行文件权限: {oct(stat.st_mode)}")
         
-        logger.info(f"项目文件路径: {self.project_path}")
-        logger.info(f"项目文件存在: {os.path.exists(self.project_path)}")
+        logger.info(f"项目文件路径: {self.iar_project_path}")
+        logger.info(f"项目文件存在: {os.path.exists(self.iar_project_path)}")
         
         # 检查项目目录权限
-        if self.project_path and os.path.exists(self.project_path):
-            project_dir = os.path.dirname(self.project_path)
+        if self.iar_project_path and os.path.exists(self.iar_project_path):
+            project_dir = os.path.dirname(self.iar_project_path)
             logger.info(f"项目目录: {project_dir}")
             logger.info(f"项目目录存在: {os.path.exists(project_dir)}")
             logger.info(f"项目目录可写: {os.access(project_dir, os.W_OK)}")
@@ -249,7 +249,7 @@ class IARBuilder:
                 timeout=self.timeout_seconds,
                 creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0,
                 shell=False,  # 明确设置为False，避免shell权限问题
-                cwd=os.path.dirname(self.project_path) if self.project_path else None  # 设置工作目录
+                cwd=os.path.dirname(self.iar_project_path) if self.iar_project_path else None  # 设置工作目录
             )
             
             if result.returncode == 0:
@@ -299,7 +299,8 @@ class IARBuilder:
                 cmd = [
                     self.iar_exe_path,
                     self.iar_project_path,
-                    self.build_config  # 不指定-build参数，默认为make操作
+                    '-make',
+                    self.build_config
                 ]
             
             logger.info(f"执行命令: {' '.join(cmd)}")
@@ -338,7 +339,7 @@ class IARBuilder:
                             text=True,
                             timeout=self.timeout_seconds,
                             shell=True,
-                            cwd=os.path.dirname(self.project_path) if self.project_path else None
+                            cwd=os.path.dirname(self.iar_project_path) if self.iar_project_path else None
                         )
                     else:
                         logger.info(f"执行命令: {' '.join(cmd)}")
@@ -349,7 +350,7 @@ class IARBuilder:
                             timeout=self.timeout_seconds,
                             creationflags=use_creationflags,
                             shell=False,
-                            cwd=os.path.dirname(self.project_path) if self.project_path else None
+                            cwd=os.path.dirname(self.iar_project_path) if self.iar_project_path else None
                         )
                     
                     # 如果成功执行，跳出循环
@@ -520,7 +521,8 @@ def test_iar_builder():
     
     logger.info("IAR编译器测试")
     logger.info(f"IAR可执行文件: {builder.iar_exe_path}")
-    logger.info(f"项目文件: {builder.project_path}")
+    logger.info(f"IAR项目文件: {builder.iar_project_path}")
+    logger.info(f"项目根目录: {builder.project_path}")
     logger.info(f"输出bin文件: {builder.output_bin_path}")
     
     # 检查bin文件

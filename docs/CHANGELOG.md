@@ -8,6 +8,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),
 项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。  
 This project adheres to [Semantic Versioning](https://semver.org/lang/zh-CN/).
 
+## [1.0.5.1] - 2025-10-10
+
+### 修复 / Fixed
+- **[重要]** 修复IAR编译命令缺少`-make`参数导致编译失败的问题 / Fixed IAR compilation failure due to missing `-make` parameter
+- **[重要]** 修复IAR编译工作目录设置错误导致无法生成bin/out文件的问题 / Fixed incorrect working directory setting causing failure to generate bin/out files
+- 修复IAR编译器初始化时日志输出路径混淆的问题 / Fixed path confusion in logger output during IAR builder initialization
+- 修复`clean_project()`方法工作目录设置错误 / Fixed incorrect working directory setting in `clean_project()` method
+- 修复权限检查和环境诊断中的路径引用错误 / Fixed path reference errors in permission checks and environment diagnostics
+
+### 技术细节 / Technical Details
+- 增量编译命令从 `IarBuild.exe project.ewp Debug` 修正为 `IarBuild.exe project.ewp -make Debug`
+- 工作目录从项目根目录修正为.ewp文件所在目录
+- 统一使用`self.iar_project_path`代替混淆的`self.project_path`
+
+### 相关文档 / Related Documentation
+- 新增 `docs/BUGFIX_IAR_COMPILE.md` 详细说明修复内容
+
 ## [1.0.5.0] - 2025-01-14
 
 ### 重大更新 / Major Updates
