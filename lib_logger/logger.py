@@ -7,6 +7,7 @@ Logger核心模块
 
 import os
 import sys
+import threading
 from time import strftime, localtime
 from loguru._logger import Core, Logger
 
@@ -118,6 +119,17 @@ def _add_file_log():
             log_path = get_log_path()
             if log_path:
                 log_file = os.path.join(log_path, f"Time_{strftime('%Y-%m-%d_%H-%M-%S', localtime())}.log")
+                # 检查是否已经添加了相同路径的文件日志处理器
+                try:
+                    handlers = logger._core.handlers
+                    for handler in handlers:
+                        if hasattr(handler, '_sink') and hasattr(handler._sink, 'name') and handler._sink.name == log_file:
+                            _file_log_added = True
+                            return
+                except:
+                    # 如果检查失败，继续添加
+                    pass
+                
                 logger.add(sink=log_file, level='INFO')
             else:
                 # 如果无法获取日志路径，使用当前目录
@@ -126,17 +138,8 @@ def _add_file_log():
             _file_log_added = True
         except Exception as e:
             # 如果文件日志添加失败，只使用控制台日志
+            _file_log_added = True  # 即使失败也标记为已添加，避免重复尝试
             pass
 
-# 创建一个包装器，在第一次使用时添加文件日志
-class LoggerWrapper:
-    def __init__(self, original_logger):
-        self._logger = original_logger
-    
-    def __getattr__(self, name):
-        # 确保文件日志已添加
-        _add_file_log()
-        return getattr(self._logger, name)
-
-# 使用包装器
-logger = LoggerWrapper(logger)
+# 直接添加文件日志，不使用包装器
+_add_file_log()
