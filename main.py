@@ -1304,14 +1304,31 @@ class MCUAutoBuildApp:
         def build_thread():
             try:
                 
-                # 检查配置是否完整
-                if not self._check_build_config():
-                    return
-                
                 self.update_status(self.get_text('start_build_process'))
                 self.progress_bar.start()
                 
-                # 1. 检查Git状态（如果用户没有手动检查过）
+                # 0. 首先初始化路径管理器并调用auto_find_paths
+                project_path = self.project_path_var.get()
+                
+                # 确保路径管理器已初始化
+                if not self.path_manager:
+                    compile_tool = self.config.get('compile_tool', 'IAR')
+                    self.path_manager = PathManagerFactory.create_path_manager(compile_tool, project_path)
+                else:
+                    # 确保项目路径是最新的
+                    self.path_manager.set_project_path(project_path)
+                    
+                # 调用auto_find_paths来自动设置bin起始地址等配置
+                self.config = self.path_manager.auto_find_paths(self.config)
+                
+                # 更新flash起始地址显示
+                self._update_flash_start_addr_display()
+                
+                # 1. 检查配置是否完整（放在auto_find_paths之后）
+                if not self._check_build_config():
+                    return
+                
+                # 2. 检查Git状态（如果用户没有手动检查过）
                 if not self.git_status_checked:
                     self.log_message("自动执行Git状态检查...")
                     # 模拟点击Git状态检查按钮
@@ -1324,7 +1341,7 @@ class MCUAutoBuildApp:
                 else:
                     self.log_message("使用已完成的Git状态检查结果")
                 
-                # 2. 检查版本（如果用户没有手动检查过）
+                # 3. 检查版本（如果用户没有手动检查过）
                 if not self.version_checked:
                     self.log_message("自动执行版本检查...")
                     # 模拟点击版本检查按钮
@@ -1337,22 +1354,9 @@ class MCUAutoBuildApp:
                 else:
                     self.log_message("使用已完成的版本检查结果")
                 
-                # 3. 获取项目路径和初始化管理器
-                project_path = self.project_path_var.get()
-                
-                # 确保Git管理器已初始化
+                # 4. 确保Git管理器已初始化
                 if not self.git_manager:
                     self.git_manager = GitManager(project_path)
-                
-                # 确保路径管理器已初始化
-                if not self.path_manager:
-                    compile_tool = self.config.get('compile_tool', 'IAR')
-                    self.path_manager = PathManagerFactory.create_path_manager(compile_tool, project_path)
-                    
-                self.config = self.path_manager.auto_find_paths(self.config)
-                
-                # 更新flash起始地址显示
-                self._update_flash_start_addr_display()
                 
                 # 从IAR项目文件中提取项目名称
                 iar_project_path = self.config.get('project_settings', {}).get('iar_project_path') or self.config.get('iar_project_path')
