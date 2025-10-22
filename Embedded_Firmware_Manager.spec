@@ -31,7 +31,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='Embedded_Firmware_Manager_v1.0.5.1',
+    name='Embedded_Firmware_Manager_v1.0.5.2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -14,7 +14,7 @@ queue  # 队列（Python内置）
 zlib  # CRC32计算（Python内置）
 
 # 第三方包
-loguru>=0.7.0  # 日志记录库
+loguru==0.6.0  # 日志记录库
 lxml>=4.9.0  # XML解析库（用于解析IAR和MDK项目文件）
 # gitpython>=3.1.0  # Git操作（可选，使用subprocess调用git命令）
 

@@ -774,8 +774,8 @@ class MCUAutoBuildApp:
         
         # 项目路径
         ttk.Label(info_frame, text=self.get_text('project_path')).grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
-        # 优先使用配置中的项目路径，如果没有则使用脚本所在目录
-        initial_project_path = self.config.get('project_path', os.path.dirname(os.path.abspath(__file__)))
+        # 项目路径完全由GUI输入决定，初始为空
+        initial_project_path = ""
         self.project_path_var = tk.StringVar(value=initial_project_path)
         ttk.Entry(info_frame, textvariable=self.project_path_var, state="readonly").grid(
             row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
@@ -1200,7 +1200,7 @@ class MCUAutoBuildApp:
             missing_configs.append("信息文件")
         else:
             # 基于文件名查找完整路径
-            project_path = self.config.get('project_path', '')
+            project_path = self.project_path_var.get()
             self.log_message(f"项目路径: {project_path}")
             if not project_path:
                 missing_configs.append("项目路径")
@@ -1930,7 +1930,7 @@ class MCUAutoBuildApp:
                 initial_dir = os.path.dirname(current_config)
             else:
                 # 尝试从项目路径开始查找
-                project_path = self.config.get('project_path', '')
+                project_path = self.project_path_var.get()
                 initial_dir = project_path if project_path and os.path.exists(project_path) else os.path.dirname(os.path.abspath(__file__))
             
             self.log_message(f"配置文件对话框初始目录: {initial_dir}")
@@ -2087,7 +2087,7 @@ class MCUAutoBuildApp:
         self.config['compile_tool'] = compile_tool
         
         # 重新创建路径管理器和信息管理器
-        project_path = self.config.get('project_path', '')
+        project_path = self.project_path_var.get()
         if project_path:
             self.log_message(f"重新创建管理器，项目路径: {project_path}")
             self.path_manager = PathManagerFactory.create_path_manager(compile_tool, project_path)
@@ -2163,7 +2163,6 @@ class MCUAutoBuildApp:
                 "compile_tool": self.config.get('compile_tool', 'IAR'),
                 "iar_installation_path": self.config.get('iar_installation_path', ''),
                 "mdk_installation_path": self.config.get('mdk_installation_path', ''),
-                "project_path": self.config.get('project_path', ''),
                 "fw_publish_directory": self.config.get('fw_publish_directory', './fw_publish'),
                 "remote_publish_directory": self.config.get('remote_publish_directory', ''),
                 "enable_remote_publish": self.config.get('enable_remote_publish', False),
