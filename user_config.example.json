@@ -2,7 +2,6 @@
     "compile_tool": "IAR",
     "iar_installation_path": "",
     "mdk_installation_path": "",
-    "project_path": "E:/YourProject",
     "fw_publish_directory": "./fw_publish",
     "remote_publish_directory": "",
     "enable_remote_publish": false,

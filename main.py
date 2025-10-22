@@ -610,13 +610,8 @@ class MCUAutoBuildApp:
             else:
                 self.log_message("未找到语言设置，使用默认语言")
             
-            # 初始化路径管理器和配置分析器 - 使用用户指定的项目路径
-            project_path = self.config.get('project_path', '')
-            if not project_path or not os.path.exists(project_path):
-                project_path = os.path.dirname(os.path.abspath(__file__))  # 使用脚本所在目录
-                self.log_message(f"使用脚本所在目录作为项目路径: {project_path}")
-            else:
-                self.log_message(f"使用用户指定的项目路径: {project_path}")
+            # 初始化路径管理器和配置分析器 - 不设置默认项目路径，完全由GUI输入决定
+            self.log_message("项目路径将由GUI输入决定，不在配置文件中预设")
             
             # 根据编译工具创建相应的路径管理器和信息管理器
             compile_tool = self.config.get('compile_tool')
@@ -626,18 +621,16 @@ class MCUAutoBuildApp:
                 return
             
             self.log_message(f"使用编译工具: {compile_tool}")
-            self.path_manager = PathManagerFactory.create_path_manager(compile_tool, project_path)
+            # 不传入项目路径，完全由GUI输入决定
+            self.path_manager = PathManagerFactory.create_path_manager(compile_tool, None)
             self.info_manager = InfoManagerFactory.create_manager(compile_tool, self.config)
-            self.config = self.path_manager.auto_find_paths(self.config)
+            # 注意：auto_find_paths需要在设置项目路径后调用
             
-            # 自动查找配置文件
+            # 自动查找配置文件（需要在设置项目路径后进行）
             if not self.config.get('binary_settings', {}).get('config_file'):
                 info_file_name = self.config.get('info_file', '')
                 if info_file_name:
-                    config_file, _ = self.get_info_file_path_with_details(project_path)
-                if config_file:
-                    self.config['config_file'] = config_file
-                    self.log_message(f"自动找到配置文件: {config_file}")
+                    self.log_message("配置文件查找将在设置项目路径后进行")
                 else:
                     self.log_message("未设置配置文件名称，跳过自动查找")
             
@@ -653,7 +646,6 @@ class MCUAutoBuildApp:
         try:
             user_config = {
                     "iar_installation_path": "",
-                    "project_path": "",
                     "fw_publish_directory": "./fw_publish",
                     "remote_publish_directory": "",
                     "enable_remote_publish": False,
@@ -685,16 +677,7 @@ class MCUAutoBuildApp:
     def _load_user_config_to_ui(self):
         """将用户配置加载到界面"""
         try:
-            # 加载项目路径（只有在界面还没有设置时才从配置文件加载）
-            current_ui_path = self.project_path_var.get()
-            project_path = ''
-            if not current_ui_path or current_ui_path.strip() == '':
-                project_path = self.config.get('project_path', '')
-            if project_path:
-                self.project_path_var.set(project_path)
-                self.log_message(f"已加载项目路径: {project_path}")
-            else:
-                self.log_message(f"保持当前项目路径设置: {current_ui_path}")
+            # 项目路径完全由GUI输入决定，不从配置文件加载
             
             # 加载编译工具路径并显示
             compile_tool = self.config.get('compile_tool', 'IAR')
@@ -907,12 +890,8 @@ class MCUAutoBuildApp:
                 self.clear_info_file_cache()  # 清除信息文件缓存
                 self.log_message(f"选择项目路径: {directory}")
                 
-                # 更新配置
-                self.config['project_path'] = directory
-                
-                # 重新初始化PathManager以使用新的项目路径
-                compile_tool = self.config.get('compile_tool', 'IAR')
-                self.path_manager = PathManagerFactory.create_path_manager(compile_tool, directory)
+                # 设置PathManager的项目路径
+                self.path_manager.set_project_path(directory)
                 self.config = self.path_manager.auto_find_paths(self.config)
                 self.log_message("已重新搜索项目文件")
                 
@@ -929,9 +908,6 @@ class MCUAutoBuildApp:
                     self.log_message(f"自动获取flash偏移地址: 0x{flash_offset:X}")
                 else:
                     self.log_message("无法自动获取flash偏移地址，请手动设置")
-                
-                # 保存到配置文件
-                self.save_config()
             else:
                 self.log_message("用户取消了目录选择")
         except Exception as e:
@@ -1027,8 +1003,7 @@ class MCUAutoBuildApp:
             else:
                 user_config = {}
             
-            # 只更新项目路径
-            user_config["project_path"] = self.project_path_var.get()
+            # 不保存项目路径，完全由GUI输入决定
             
             # 保存信息文件文件名（只存储文件名，不存储路径）
             info_file_path = self.config.get('info_file', '')

@@ -88,7 +88,7 @@ logger = Logger(
     colors=False,
     raw=False,
     capture=True,
-    patchers={},
+    patcher=None,
     extra={}
 )
 
