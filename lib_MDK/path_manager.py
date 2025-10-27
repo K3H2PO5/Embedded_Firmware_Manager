@@ -332,12 +332,13 @@ class MDKPathManager:
         
         return len(invalid_paths) == 0, invalid_paths
     
-    def auto_find_paths(self, config: dict) -> dict:
+    def auto_find_paths(self, config: dict, selected_config: Dict = None) -> dict:
         """
         自动查找并更新配置中的路径
         
         Args:
             config: 配置字典
+            selected_config: 用户选择的配置（Debug或Release），必须提供
             
         Returns:
             dict: 更新后的配置字典
@@ -350,28 +351,31 @@ class MDKPathManager:
         
         project_settings = updated_config['project_settings']
         
-        # 查找MDK项目文件
-        current_project = project_settings.get('mdk_project_path', '')
-        if not current_project or not os.path.exists(current_project):
-            project_path = self.find_mdk_project()
-            if project_path:
-                project_settings['mdk_project_path'] = project_path
-                updated_config['mdk_project_path'] = project_path  # 同时更新根级别
-                logger.info(f"自动找到MDK项目文件: {project_path}")
+        # 查找MDK项目文件（总是重新查找，确保使用最新的项目路径）
+        logger.info("重新查找MDK项目文件...")
+        project_path = self.find_mdk_project()
+        if project_path:
+            project_settings['mdk_project_path'] = project_path
+            updated_config['mdk_project_path'] = project_path  # 同时更新根级别
+            logger.info(f"找到MDK项目文件: {project_path}")
+        else:
+            logger.warning("未找到MDK项目文件")
         
-        # 查找bin文件
-        current_bin = project_settings.get('output_bin_path', '')
-        if not current_bin or not os.path.exists(current_bin):
+        # 查找bin文件（基于最新找到的项目文件）
+        if project_path:  # 只在找到项目文件后才查找bin文件
             # 尝试从项目文件中获取项目名称
             project_name = self._extract_project_name_from_uvprojx(project_settings.get('mdk_project_path', ''))
             if not project_name:
                 project_name = 'MCU'  # 默认项目名称
             
+            logger.info(f"基于项目名称查找bin文件: {project_name}")
             bin_path = self.find_bin_file(project_name)
             if bin_path:
                 project_settings['output_bin_path'] = bin_path
                 updated_config['output_bin_path'] = bin_path  # 同时更新根级别
-                logger.info(f"自动找到bin文件: {bin_path}")
+                logger.info(f"找到bin文件: {bin_path}")
+            else:
+                logger.warning(f"未找到bin文件（项目名: {project_name}）")
         
         # 自动获取flash偏移地址
         if 'binary_settings' not in updated_config:
@@ -381,16 +385,22 @@ class MDKPathManager:
         logger.info(f"当前bin_start_address: 0x{current_bin_start:X}")
         if current_bin_start == 0:
             logger.info("尝试自动获取flash偏移地址...")
-            flash_offset = self.get_flash_offset_from_configuration()
+            # 必须使用用户选择的配置
+            if not selected_config:
+                error_msg = "必须提供用户选择的配置（Debug或Release），请先选择配置"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            
+            logger.info(f"使用用户选择的配置: {selected_config.get('name', 'Unknown')}")
+            flash_offset = self.get_flash_offset_from_configuration(selected_config)
+            
             if flash_offset:
                 updated_config['binary_settings']['bin_start_address'] = flash_offset
                 logger.info(f"自动获取flash偏移地址成功: 0x{flash_offset:X}")
             else:
-                # 如果无法自动获取，设置一个默认值（STM32的常见起始地址）
-                default_flash_offset = 0x08000000
-                updated_config['binary_settings']['bin_start_address'] = default_flash_offset
-                logger.warning(f"无法自动获取flash偏移地址，使用默认值: 0x{default_flash_offset:X}")
-                logger.warning("请检查MDK项目文件是否正确配置，或手动设置正确的起始地址")
+                error_msg = "无法从SCT文件获取flash偏移地址，请检查MDK项目配置"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
         else:
             logger.info(f"使用已配置的bin_start_address: 0x{current_bin_start:X}")
         

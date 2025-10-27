@@ -117,7 +117,7 @@ a = Analysis(
         ('user_config.example.json', '.'),
         ('docs', 'docs'),
     ],
-    hiddenimports=[],
+    hiddenimports=['crcmod'],
     hookspath=[],
     hooksconfig={{}},
     runtime_hooks=[],

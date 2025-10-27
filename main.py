@@ -892,11 +892,10 @@ class MCUAutoBuildApp:
                 
                 # 设置PathManager的项目路径
                 self.path_manager.set_project_path(directory)
-                self.config = self.path_manager.auto_find_paths(self.config)
-                self.log_message("已重新搜索项目文件")
-                
-                # 刷新配置列表
+                # 先刷新配置列表，确保有选中的配置
                 self.refresh_configurations()
+                self.config = self.path_manager.auto_find_paths(self.config, self.selected_configuration)
+                self.log_message("已重新搜索项目文件")
                 
                 # 自动获取flash偏移地址
                 flash_offset = self.path_manager.get_flash_offset_from_configuration(self.selected_configuration)
@@ -1038,7 +1037,7 @@ class MCUAutoBuildApp:
                 # 重新初始化路径管理器并更新配置
                 compile_tool = self.config.get('compile_tool', 'IAR')
                 self.path_manager = PathManagerFactory.create_path_manager(compile_tool, project_path)
-                self.config = self.path_manager.auto_find_paths(self.config)
+                self.config = self.path_manager.auto_find_paths(self.config, self.selected_configuration)
                 
                 # 从IAR项目文件中提取项目名称
                 iar_project_path = self.config.get('project_settings', {}).get('iar_project_path') or self.config.get('iar_project_path')
@@ -1318,8 +1317,8 @@ class MCUAutoBuildApp:
                     # 确保项目路径是最新的
                     self.path_manager.set_project_path(project_path)
                     
-                # 调用auto_find_paths来自动设置bin起始地址等配置
-                self.config = self.path_manager.auto_find_paths(self.config)
+                # 调用auto_find_paths来自动设置bin起始地址等配置（使用用户选择的配置）
+                self.config = self.path_manager.auto_find_paths(self.config, self.selected_configuration)
                 
                 # 更新flash起始地址显示
                 self._update_flash_start_addr_display()
@@ -1492,20 +1491,24 @@ class MCUAutoBuildApp:
                 self.builder = BuilderFactory.create_builder(compile_tool, self.config, self.selected_configuration)
                 
                 # 10. 智能编译项目
+                # 判断是否只有版本号变化
+                only_version_changed = current_version is not None
+                
+                # 显示编译命令到GUI日志
+                if hasattr(self.builder, 'get_command_string'):
+                    cmd_str = self.builder.get_command_string(only_version_changed)
+                    self.log_message(f"调用命令: {cmd_str}")
+                
                 self.update_status(self.get_text('compiling_project'))
                 # 记录编译开始时间
                 compile_start_time = datetime.now()
-                # 判断是否只有版本号变化
-                # 如果版本号相同，说明没有版本号变化，应该使用增量编译
-                # 如果版本号不同，说明有版本号变化，也应该使用增量编译
-                # 只有在没有版本号信息时才使用清理编译
-                only_version_changed = current_version is not None
                 
                 # 调用构建器进行智能编译
                 success, message = self.builder.smart_build(only_version_changed)
                 
                 if not success:
                     messagebox.showerror(self.get_text('msg_compile_failed'), message)
+                    self.log_message(f"❌ {message}")
                     return
                 
                 # 获取bin文件信息
@@ -1515,7 +1518,7 @@ class MCUAutoBuildApp:
                     messagebox.showerror(self.get_text('msg_compile_failed'), self.get_text('msg_compile_success_no_bin'))
                     return
                 
-                self.log_message("编译成功")
+                self.log_message(f"✅ {message}")
                 
                 # 11. 修改二进制文件
                 self.update_status(self.get_text('modifying_binary'))

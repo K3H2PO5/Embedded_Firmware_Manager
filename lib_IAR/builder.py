@@ -252,11 +252,13 @@ class IARBuilder:
                 cwd=os.path.dirname(self.iar_project_path) if self.iar_project_path else None  # 设置工作目录
             )
             
+            logger.info(f"清理命令返回码: {result.returncode}")
             if result.returncode == 0:
-                logger.info("项目清理成功")
+                logger.info("项目清理成功（返回码 0）")
                 return True
             else:
-                logger.error(f"项目清理失败: {result.stderr}")
+                logger.error(f"项目清理失败（返回码 {result.returncode}）")
+                logger.error(f"错误输出: {result.stderr}")
                 return False
                 
         except subprocess.TimeoutExpired:
@@ -303,18 +305,28 @@ class IARBuilder:
                     self.build_config
                 ]
             
-            logger.info(f"执行命令: {' '.join(cmd)}")
+            # 打印完整的编译命令（重要：便于用户确认使用的项目文件）
+            logger.info("=" * 80)
+            logger.info("IAR编译命令:")
+            logger.info(f"  完整命令: {' '.join(cmd)}")
+            logger.info(f"  工作目录: {os.path.dirname(self.iar_project_path) if self.iar_project_path else 'None'}")
+            logger.info("=" * 80)
             
-            # 调试信息
-            logger.info(f"IAR可执行文件路径: {self.iar_exe_path}")
-            logger.info(f"项目文件路径: {self.iar_project_path}")
-            logger.info(f"工作目录: {os.path.dirname(self.iar_project_path) if self.iar_project_path else None}")
+            # 验证项目文件是否正确
+            if self.iar_project_path:
+                logger.info(f"使用项目文件: {self.iar_project_path}")
+                logger.info(f"项目文件存在: {os.path.exists(self.iar_project_path)}")
+                if os.path.exists(self.iar_project_path):
+                    file_size = os.path.getsize(self.iar_project_path)
+                    logger.info(f"项目文件大小: {file_size} 字节")
+            else:
+                logger.error("项目文件路径为空！")
             
             # 检查文件是否存在
             if not os.path.exists(self.iar_exe_path):
-                return False, f"IAR可执行文件不存在: {self.iar_exe_path}"
+                return False, f"IAR可执行文件不存在: {self.iar_exe_path}\n尝试使用的项目文件: {self.iar_project_path}"
             if not os.path.exists(self.iar_project_path):
-                return False, f"项目文件不存在: {self.iar_project_path}"
+                return False, f"项目文件不存在: {self.iar_project_path}\n请检查项目路径是否正确"
             
             # 执行编译
             start_time = time.time()
@@ -354,7 +366,11 @@ class IARBuilder:
                         )
                     
                     # 如果成功执行，跳出循环
-                    logger.info(f"编译尝试 {attempt + 1} 成功执行，返回码: {result.returncode}")
+                    logger.info(f"编译尝试 {attempt + 1} 完成，返回码: {result.returncode}")
+                    logger.info(f"返回码 {result.returncode} 表示: {'编译成功' if result.returncode == 0 else '编译失败'}")
+                    if result.returncode != 0:
+                        logger.error(f"编译失败，返回码: {result.returncode}")
+                        logger.error(f"错误输出: {result.stderr[:500]}")
                     break
                     
                 except PermissionError as e:
@@ -381,14 +397,18 @@ class IARBuilder:
             logger.info(f"编译耗时: {compile_time:.2f}秒")
             
             # 分析编译结果
+            logger.info(f"编译命令返回码: {result.returncode}")
+            
+            # 准备编译命令信息字符串（用于GUI显示，不包含输出）
+            cmd_info = f"使用项目文件: {self.iar_project_path}\n命令: {' '.join(cmd)}\n"
+            
             if result.returncode == 0:
-                logger.info("编译成功")
-                output_info = f"编译成功\n耗时: {compile_time:.2f}秒\n\n输出信息:\n{result.stdout}"
-                return True, output_info
+                logger.info("编译成功（返回码 0）")
+                return True, f"编译成功，耗时: {compile_time:.2f}秒"
             else:
-                logger.error("编译失败")
-                error_info = f"编译失败\n返回码: {result.returncode}\n\n错误信息:\n{result.stderr}\n\n输出信息:\n{result.stdout}"
-                return False, error_info
+                logger.error(f"编译失败（返回码 {result.returncode}）")
+                logger.error(f"错误输出: {result.stderr[:500] if result.stderr else '无错误输出'}")
+                return False, f"编译失败，返回码: {result.returncode}"
                 
         except subprocess.TimeoutExpired:
             logger.error("编译超时")
@@ -486,6 +506,25 @@ class IARBuilder:
         
         return success, message, bin_info
     
+    def get_command_string(self, only_version_changed: bool = True) -> str:
+        """
+        获取编译命令字符串（用于GUI显示）
+        
+        Args:
+            only_version_changed: 是否只有版本号发生变化
+        
+        Returns:
+            str: 编译命令字符串
+        """
+        should_clean = self.clean_before_build or (not only_version_changed)
+        
+        if should_clean:
+            cmd = [self.iar_exe_path, self.iar_project_path, '-build', self.build_config]
+        else:
+            cmd = [self.iar_exe_path, self.iar_project_path, '-make', self.build_config]
+        
+        return ' '.join(cmd)
+    
     def smart_build(self, only_version_changed: bool = True) -> Tuple[bool, str]:
         """
         智能编译：根据修改内容决定编译策略
@@ -497,10 +536,8 @@ class IARBuilder:
             Tuple[bool, str]: (编译是否成功, 输出信息)
         """
         if only_version_changed:
-            logger.info("检测到仅版本号变化，使用增量编译（make）")
             return self.build_project(force_rebuild=False)
         else:
-            logger.info("检测到代码变化，使用清理编译（rebuild all）")
             return self.build_project(force_rebuild=True)
 
 

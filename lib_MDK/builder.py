@@ -221,12 +221,12 @@ class MDKBuilder:
         if not os.path.exists(self.mdk_exe_path):
             error_msg = f"MDK可执行文件不存在: {self.mdk_exe_path}"
             logger.error(error_msg)
-            return False, "", error_msg
+            return False, f"{error_msg}\n尝试使用的项目文件: {self.project_path}"
         
         if not os.path.exists(self.project_path):
             error_msg = f"MDK项目文件不存在: {self.project_path}"
             logger.error(error_msg)
-            return False, "", error_msg
+            return False, f"{error_msg}\n请检查项目路径是否正确"
         
         try:
             # 设置工作目录为项目文件所在目录
@@ -302,6 +302,7 @@ class MDKBuilder:
             logger.info("=" * 50)
             logger.info("编译结果:")
             logger.info(f"返回码: {result.returncode}")
+            logger.info(f"返回码 {result.returncode} 表示: {'编译成功' if result.returncode == 0 else '编译失败'}")
             logger.info(f"标准输出长度: {len(result.stdout)}")
             logger.info(f"错误输出长度: {len(result.stderr)}")
             
@@ -309,25 +310,31 @@ class MDKBuilder:
             if result.stdout:
                 logger.info(f"标准输出内容: {result.stdout[:500]}...")
             if result.stderr:
-                logger.info(f"错误输出内容: {result.stderr[:500]}...")
+                logger.warning(f"错误输出内容: {result.stderr[:500]}...")
             
             logger.info("=" * 50)
             
+            # 准备编译命令信息字符串（用于GUI显示）
+            cmd_info = f"使用项目文件: {self.project_path}\n命令: {' '.join(cmd)}\n"
+            
             if result.returncode == 0:
-                logger.info("✅ 编译成功")
-                return True, result.stdout
+                logger.info("✅ 编译成功（返回码 0）")
+                return True, f"编译成功\n\n{cmd_info}\n输出信息:\n{result.stdout}"
             else:
-                logger.error(f"❌ 编译失败，返回码: {result.returncode}")
-                return False, f"编译失败: {result.stderr}"
+                logger.error(f"❌ 编译失败（返回码 {result.returncode}）")
+                logger.error(f"错误输出: {result.stderr[:500] if result.stderr else '无错误输出'}")
+                return False, f"编译失败，返回码 {result.returncode}\n\n{cmd_info}\n错误信息:\n{result.stderr}"
                 
         except subprocess.TimeoutExpired:
             error_msg = f"编译超时，超过 {self.timeout_seconds} 秒"
             logger.error(error_msg)
-            return False, error_msg
+            cmd_info = f"使用项目文件: {self.project_path}\n命令: {' '.join(cmd)}\n" if 'cmd' in locals() else ""
+            return False, f"{error_msg}\n\n{cmd_info}"
         except Exception as e:
             error_msg = f"编译异常: {str(e)}"
             logger.error(error_msg)
-            return False, error_msg
+            cmd_info = f"使用项目文件: {self.project_path}\n命令: {' '.join(cmd)}\n" if 'cmd' in locals() else ""
+            return False, f"{error_msg}\n\n{cmd_info}"
     
     def clean_project(self) -> bool:
         """
@@ -343,12 +350,12 @@ class MDKBuilder:
         if not os.path.exists(self.mdk_exe_path):
             error_msg = f"MDK可执行文件不存在: {self.mdk_exe_path}"
             logger.error(error_msg)
-            return False, "", error_msg
+            return False
         
         if not os.path.exists(self.project_path):
             error_msg = f"MDK项目文件不存在: {self.project_path}"
             logger.error(error_msg)
-            return False, "", error_msg
+            return False
         
         try:
             # 设置工作目录为项目文件所在目录
@@ -379,13 +386,14 @@ class MDKBuilder:
             )
             
             # 记录清理结果
-            logger.info(f"清理完成，返回码: {result.returncode}")
+            logger.info(f"清理命令返回码: {result.returncode}")
+            logger.info(f"返回码 {result.returncode} 表示: {'清理成功' if result.returncode == 0 else '清理失败'}")
             
             if result.returncode == 0:
-                logger.info("清理成功")
+                logger.info("清理成功（返回码 0）")
                 return True
             else:
-                logger.error(f"清理失败，返回码: {result.returncode}")
+                logger.error(f"清理失败（返回码 {result.returncode}）")
                 logger.error(f"错误输出: {result.stderr}")
                 return False
                 
@@ -536,6 +544,31 @@ class MDKBuilder:
         bin_info = self.get_bin_file_info()
         
         return success, output, bin_info
+    
+    def get_command_string(self, only_version_changed: bool = True) -> str:
+        """
+        获取编译命令字符串（用于GUI显示）
+        
+        Args:
+            only_version_changed: 是否只有版本号发生变化
+        
+        Returns:
+            str: 编译命令字符串
+        """
+        configuration = self.build_config
+        project_dir = os.path.dirname(self.project_path) if self.project_path else ""
+        log_file = os.path.join(project_dir, f"build_{configuration}.log") if project_dir else ""
+        
+        cmd = [
+            self.mdk_exe_path,
+            '-b',
+            '-j0',
+            '-t', configuration,
+            self.project_path,
+            '-o', log_file
+        ]
+        
+        return ' '.join(cmd)
     
     def smart_build(self, only_version_changed: bool = True) -> Tuple[bool, str]:
         """

@@ -6,15 +6,15 @@
 
 CRC32多项式信息：
 - 标准多项式: X32 + X26 + X23 + X22 + X16 + X12 + X11 + X10 + X8 + X7 + X5 + X4 + X2 + X + 1
-- 十六进制表示: 0x04C11DB7 (标准形式) / 0xEDB88320 (反向形式)
-- 使用库: zlib.crc32() (使用反向形式 0xEDB88320)
-- 标准: IEEE 802.3 (以太网标准)
+- 十六进制表示: 0x04C11DB7 (正向形式，MPEG2标准)
+- 初始值: 0xFFFFFFFF
+- 标准: MPEG2 CRC-32
 """
 
 import os
 import struct
 import hashlib
-import zlib
+import crcmod
 from lib_logger import logger
 from typing import Tuple, Optional
 from pathlib import Path
@@ -106,26 +106,35 @@ class BinaryModifier:
             logger.info(f"哈希校验和偏移量: 0x{self.hash_value_offset:X} -> 相对偏移: 0x{self.actual_hash_value_offset:X}")
         else:
             self.actual_hash_value_offset = 0
-    
-    def calculate_crc32(self, data: bytes) -> int:
-        """
-        计算CRC32值
         
-        使用IEEE 802.3标准的CRC-32多项式：
+        # MPEG2 CRC32参数（用于所有段）
+        # 多项式: 0x04C11DB7，初始值通过initial参数控制
+        self.crc_polynomial = 0x104C11DB7
+    
+    def calculate_crc32(self, data: bytes, initial: int = 0xFFFFFFFF) -> int:
+        """
+        计算CRC32值（MPEG2标准，使用crcmod）
+        
+        使用MPEG2标准的CRC-32多项式：
         多项式: X32 + X26 + X23 + X22 + X16 + X12 + X11 + X10 + X8 + X7 + X5 + X4 + X2 + X + 1
-        十六进制: 0x04C11DB7 (标准形式) / 0xEDB88320 (反向形式，zlib使用)
+        十六进制: 0x04C11DB7 (正向形式，MPEG2使用)
         
         Args:
             data: 要计算CRC的数据
+            initial: 初始CRC值（用于分段累加）
             
         Returns:
             int: CRC32值
         """
-        return zlib.crc32(data) & 0xFFFFFFFF
+        # 所有段都使用crcmod，动态创建函数
+        crc_func = crcmod.mkCrcFun(self.crc_polynomial, initCrc=initial, rev=False, xorOut=0x00000000)
+        return crc_func(data) & 0xFFFFFFFF
     
     def calculate_file_crc(self, file_path: str) -> int:
         """
         计算文件的CRC32值，排除CRC值和hash值存储区域
+        
+        注意：文件大小和commit ID不包括在CRC计算中，因为它们是在CRC计算之前写入的
         
         Args:
             file_path: 文件路径
@@ -139,33 +148,33 @@ class BinaryModifier:
             
             # 排除CRC值存储区域（4字节）
             crc_start = self.actual_bin_checksum_offset
-            crc_end = crc_start + self.crc_size
+            crc_end = crc_start + self.crc_size - 1  # 结束位置 = 起始位置 + 长度 - 1
             
             # 排除hash值存储区域（32字节）- 只有在启用hash功能时才排除
             if self.enable_hash_value:
                 hash_start = self.actual_hash_value_offset
-                hash_end = hash_start + 32
+                hash_end = hash_start + 32 - 1  # 结束位置 = 起始位置 + 长度 - 1
             else:
                 hash_start = 0
                 hash_end = 0
             
             # 分段计算CRC
-            crc_value = 0
+            crc_value = 0xFFFFFFFF  # MPEG2 CRC32初始值
             
             # 第一段：文件开始到CRC值之前
             if crc_start > 0 and crc_start < len(data):
-                crc_value = zlib.crc32(data[:crc_start], crc_value) & 0xFFFFFFFF
+                crc_value = self.calculate_crc32(data[:crc_start], crc_value) & 0xFFFFFFFF
             
             # 第二段：CRC值之后到hash值之前（如果hash值存在）
             if self.enable_hash_value and crc_end < hash_start and crc_end < len(data):
-                crc_value = zlib.crc32(data[crc_end:hash_start], crc_value) & 0xFFFFFFFF
+                crc_value = self.calculate_crc32(data[crc_end + 1:hash_start], crc_value) & 0xFFFFFFFF
             elif not self.enable_hash_value and crc_end < len(data):
                 # 如果hash值不存在，直接从CRC值之后到文件结束
-                crc_value = zlib.crc32(data[crc_end:], crc_value) & 0xFFFFFFFF
+                crc_value = self.calculate_crc32(data[crc_end + 1:], crc_value) & 0xFFFFFFFF
             
             # 第三段：hash值之后到文件结束（只有在hash值存在时才执行）
             if self.enable_hash_value and hash_end < len(data):
-                crc_value = zlib.crc32(data[hash_end:], crc_value) & 0xFFFFFFFF
+                crc_value = self.calculate_crc32(data[hash_end + 1:], crc_value) & 0xFFFFFFFF
             
             # 记录排除的区域信息
             excluded_regions = f"CRC值区域(0x{crc_start:X}-0x{crc_end:X})"
