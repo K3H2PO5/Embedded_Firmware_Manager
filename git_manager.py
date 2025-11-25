@@ -292,6 +292,36 @@ class GitManager:
             logger.error(f"获取提交记录失败: {e}")
         
         return commits
+    
+    def push_changes(self) -> bool:
+        """
+        推送当前分支到远程仓库（依赖用户已设置好默认上游分支）
+        
+        Returns:
+            bool: 推送是否成功
+        """
+        try:
+            kwargs = self._get_subprocess_kwargs()
+            kwargs['cwd'] = self.repo_path
+            kwargs['timeout'] = 60
+            
+            result = subprocess.run(
+                ['git', 'push'],
+                **kwargs
+            )
+            
+            if result.returncode == 0:
+                logger.info("Git推送成功")
+                return True
+            
+            logger.error(f"Git推送失败: {result.stderr}")
+            return False
+        except subprocess.TimeoutExpired:
+            logger.error("Git推送超时")
+            return False
+        except Exception as e:
+            logger.error(f"Git推送异常: {e}")
+            return False
 
 
 def test_git_manager():

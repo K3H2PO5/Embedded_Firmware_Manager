@@ -1431,6 +1431,10 @@ class MCUAutoBuildApp:
                     self.log_message(f"准备提交: {commit_message}")
                     if self.git_manager.commit_changes(commit_message):
                         self.log_message(f"Git提交成功: {commit_message}")
+                        if self.git_manager.push_changes():
+                            self.log_message("Git推送成功")
+                        else:
+                            self.log_message("Git推送失败，请手动检查")
                     else:
                         self.log_message("Git提交失败，但继续编译流程")
                 else:
@@ -1467,6 +1471,10 @@ class MCUAutoBuildApp:
                     self.log_message(f"准备提交: {commit_message}")
                     if self.git_manager.commit_changes(commit_message):
                         self.log_message(f"Git提交成功: {commit_message}")
+                        if self.git_manager.push_changes():
+                            self.log_message("Git推送成功")
+                        else:
+                            self.log_message("Git推送失败，请手动检查")
                     else:
                         self.log_message("Git提交失败，但继续编译流程")
                 
