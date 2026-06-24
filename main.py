@@ -47,6 +47,7 @@ LANGUAGES = {
             'status_building': '编译中...',
             'project_info': '项目信息',
             'firmware_version': '固件版本:',
+            'git_branch': 'Git分支:',
             'git_status': 'Git状态:',
             'iar_path_display': '编译工具路径:',
             'flash_start_addr': 'Flash起始地址:',
@@ -188,6 +189,7 @@ LANGUAGES = {
             'status_building': '編譯中...',
             'project_info': '專案資訊',
             'firmware_version': '固件版本:',
+            'git_branch': 'Git分支:',
             'git_status': 'Git狀態:',
             'iar_path_display': '編譯工具路徑:',
             'flash_start_addr': 'Flash起始位址:',
@@ -329,6 +331,7 @@ LANGUAGES = {
             'status_building': 'Building...',
             'project_info': 'Project Info',
             'firmware_version': 'Firmware Version:',
+            'git_branch': 'Git Branch:',
             'git_status': 'Git Status:',
             'iar_path_display': 'Compile Tool Path:',
             'flash_start_addr': 'Flash Start Address:',
@@ -802,17 +805,23 @@ class MCUAutoBuildApp:
         ttk.Label(info_frame, textvariable=self.flash_start_addr_var, foreground="purple").grid(
             row=3, column=1, sticky=tk.W)
         
-        # Git状态
-        ttk.Label(info_frame, text=self.get_text('git_status')).grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
-        self.git_status_var = tk.StringVar(value=self.get_text('not_checked'))
-        ttk.Label(info_frame, textvariable=self.git_status_var, foreground="orange").grid(
+        # Git分支
+        ttk.Label(info_frame, text=self.get_text('git_branch')).grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
+        self.git_branch_var = tk.StringVar(value=self.get_text('not_checked'))
+        ttk.Label(info_frame, textvariable=self.git_branch_var, foreground="teal").grid(
             row=4, column=1, sticky=tk.W)
         
+        # Git状态
+        ttk.Label(info_frame, text=self.get_text('git_status')).grid(row=5, column=0, sticky=tk.W, padx=(0, 10))
+        self.git_status_var = tk.StringVar(value=self.get_text('not_checked'))
+        ttk.Label(info_frame, textvariable=self.git_status_var, foreground="orange").grid(
+            row=5, column=1, sticky=tk.W)
+        
         # 固件版本
-        ttk.Label(info_frame, text=self.get_text('firmware_version')).grid(row=5, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(info_frame, text=self.get_text('firmware_version')).grid(row=6, column=0, sticky=tk.W, padx=(0, 10))
         self.firmware_version_var = tk.StringVar(value=self.get_text('not_checked'))
         ttk.Label(info_frame, textvariable=self.firmware_version_var, foreground="blue").grid(
-            row=5, column=1, sticky=tk.W)
+            row=6, column=1, sticky=tk.W)
         
         # 操作按钮框架
         button_frame = ttk.Frame(main_frame)
@@ -1048,9 +1057,15 @@ class MCUAutoBuildApp:
                 
                 # 检查是否为Git仓库
                 if not self.git_manager.is_git_repo():
+                    self.git_branch_var.set("不是Git仓库")
                     self.git_status_var.set("不是Git仓库")
                     self.update_status(self.get_text('not_git_repo_status'))
                     return
+                
+                # 获取commit信息（含分支）
+                commit_info = self.git_manager.get_commit_info()
+                branch = commit_info.get('branch')
+                self.git_branch_var.set(branch if branch else "未知")
                 
                 # 检查未提交更改
                 has_changes = self.git_manager.has_uncommitted_changes()
@@ -1061,8 +1076,6 @@ class MCUAutoBuildApp:
                     self.git_status_var.set("工作区干净")
                     self.update_status(self.get_text('git_workdir_clean'))
                 
-                # 获取commit信息
-                commit_info = self.git_manager.get_commit_info()
                 if commit_info['commit_id']:
                     self.log_message(f"当前commit: {commit_info['short_commit_id']}")
                     self.log_message(f"分支: {commit_info['branch']}")
@@ -1074,6 +1087,7 @@ class MCUAutoBuildApp:
                 
             except Exception as e:
                 self.log_message(f"检查Git状态失败: {e}")
+                self.git_branch_var.set("检查失败")
                 self.git_status_var.set("检查失败")
                 self.git_status_checked = False
             finally:
