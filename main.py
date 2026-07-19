@@ -1107,15 +1107,21 @@ class MCUAutoBuildApp:
                 project_path = self.project_path_var.get()
                 fw_publish_dir = self.config.get('fw_publish_directory', './fw_publish')
                 
-                # 获取当前git分支
+                # 获取当前git分支（若尚未检查Git，则临时初始化）
                 current_branch = None
+                if not self.git_manager and project_path:
+                    self.git_manager = GitManager(project_path)
                 if self.git_manager and self.git_manager.is_git_repo():
                     git_info = self.git_manager.get_commit_info()
                     current_branch = git_info.get('branch')
                     if current_branch:
                         logger.info(f"版本管理器初始化，检测到Git分支: {current_branch}")
+                        self.log_message(f"当前Git分支: {current_branch}")
                     else:
                         logger.warning("版本管理器初始化，无法获取Git分支信息")
+                        self.log_message("警告: 无法获取Git分支，将不统计其他分支固件")
+                else:
+                    self.log_message("警告: 当前不是Git仓库或未选择项目路径，无法按分支过滤固件")
                 
                 self.version_manager = VersionManager(self.config.get('version_settings', {}), project_path, fw_publish_dir, current_branch)
                 # 根据编译工具选择相应的信息管理器
@@ -1132,7 +1138,7 @@ class MCUAutoBuildApp:
                 if current_version:
                     self.log_message(f"当前代码版本: {current_version}")
                     
-                    # 获取下一个版本号
+                    # 获取下一个版本号（仅基于当前分支已发布固件）
                     next_version, explanation = self.version_manager.get_next_version(current_version)
                     self.log_message(f"建议下一个版本: {next_version}")
                     self.log_message(explanation)
@@ -1146,14 +1152,15 @@ class MCUAutoBuildApp:
                 # 更新flash起始地址显示
                 self._update_flash_start_addr_display()
                 
-                # 列出已发布的固件
+                # 列出当前分支已发布的固件
                 published_firmware = self.version_manager.list_published_firmware()
+                branch_label = current_branch or "未知"
                 if published_firmware:
-                    self.log_message(f"已发布固件数量: {len(published_firmware)}")
+                    self.log_message(f"当前分支({branch_label})已发布固件数量: {len(published_firmware)}")
                     for i, fw in enumerate(published_firmware[:5]):  # 只显示前5个
                         self.log_message(f"  {i+1}. {fw['filename']} (版本: {fw['version']})")
                 else:
-                    self.log_message("没有已发布的固件")
+                    self.log_message(f"当前分支({branch_label})没有已发布的固件")
                 
                 # 设置版本检查成功标志位
                 self.version_checked = True

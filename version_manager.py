@@ -248,6 +248,9 @@ class VersionManager:
         """
         检查文件名是否属于当前分支
         
+        文件名格式: {project_name}_{branch}_{version}_{commit_id}[_{configuration}][_{timestamp}].bin
+        通过匹配 _{branch}_V 定位分支（支持分支名含下划线）。
+        
         Args:
             filename: 文件名
             
@@ -255,36 +258,21 @@ class VersionManager:
             bool: 是否属于当前分支
         """
         if not self.current_branch:
-            # 如果没有指定当前分支，则检查所有文件
-            return True
+            # 未指定当前分支时不统计任何已发布固件，避免误用其他分支版本
+            logger.warning(f"未指定当前分支，跳过文件: {filename}")
+            return False
         
         try:
-            # 文件名格式: {project_name}_{branch}_{version}_{timestamp}_{commit_id}.bin
-            # 通过查找版本号模式来定位分支名
-            parts = filename.replace('.bin', '').split('_')
-            
-            if len(parts) < 3:
-                return False
-            
-            # 查找版本号模式 V数字.数字.数字.数字
-            version_pattern = re.compile(r'^V\d+\.\d+\.\d+\.\d+$')
-            version_index = -1
-            
-            for i, part in enumerate(parts):
-                if version_pattern.match(part):
-                    version_index = i
-                    break
-            
-            if version_index == -1 or version_index < 1:
-                # 没有找到版本号或版本号在第一个位置
-                return False
-            
-            # 分支名应该在版本号的前一个位置
-            file_branch = parts[version_index - 1]
-            
-            # 比较分支名（忽略大小写）
-            is_match = file_branch.lower() == self.current_branch.lower()
-            logger.info(f"文件分支: '{file_branch}', 当前分支: '{self.current_branch}', 匹配: {is_match}")
+            # 匹配 _{branch}_V数字.数字.数字.数字
+            # 使用 re.escape 避免分支名中的特殊字符干扰
+            branch_pattern = re.compile(
+                r'_' + re.escape(self.current_branch) + r'_V\d+\.\d+\.\d+\.\d+',
+                re.IGNORECASE
+            )
+            is_match = branch_pattern.search(filename) is not None
+            logger.info(
+                f"文件: '{filename}', 当前分支: '{self.current_branch}', 匹配: {is_match}"
+            )
             return is_match
             
         except Exception as e:
@@ -386,10 +374,10 @@ class VersionManager:
     
     def list_published_firmware(self) -> List[Dict]:
         """
-        列出已发布的固件文件
+        列出当前分支已发布的固件文件
         
         Returns:
-            List[Dict]: 固件文件信息列表
+            List[Dict]: 固件文件信息列表（仅当前分支）
         """
         firmware_list = []
         
@@ -399,6 +387,10 @@ class VersionManager:
             
             for filename in os.listdir(self.fw_publish_dir):
                 if not filename.endswith('.bin'):
+                    continue
+                
+                # 仅统计当前分支的固件
+                if not self._is_file_from_current_branch(filename):
                     continue
                 
                 file_path = os.path.join(self.fw_publish_dir, filename)
@@ -422,6 +414,9 @@ class VersionManager:
             
             # 按版本号排序（最新的在前）
             firmware_list.sort(key=lambda x: x['version_tuple'] or (0, 0, 0, 0), reverse=True)
+            logger.info(
+                f"当前分支({self.current_branch})已发布固件数量: {len(firmware_list)}"
+            )
             
         except Exception as e:
             logger.error(f"列出已发布固件失败: {e}")

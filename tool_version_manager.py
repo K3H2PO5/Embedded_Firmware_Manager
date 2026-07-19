@@ -63,9 +63,12 @@ class ToolVersionManager:
             logger.error(f"读取版本号失败: {e}")
             return "1.0.0.0"
     
-    def increment_version(self, increment_type: str = 'patch') -> str:
+    def increment_version(self, increment_type: str = 'build') -> str:
         """
         递增版本号
+        
+        每位范围为 0-9，末位加一后超限则向高位进位。
+        例如: 1.0.0.9 -> 1.0.1.0，而不是 1.0.0.10
         
         Args:
             increment_type: 递增类型 ('major', 'minor', 'patch', 'build')
@@ -74,14 +77,14 @@ class ToolVersionManager:
             str: 新的版本号
         """
         current_version = self.get_current_version()
-        version_parts = current_version.split('.')
+        version_parts = self.parse_version(current_version)
         
-        if len(version_parts) != 4:
+        if not version_parts:
             logger.error(f"版本号格式错误: {current_version}")
             return current_version
         
         try:
-            major, minor, patch, build = map(int, version_parts)
+            major, minor, patch, build = version_parts
             
             if increment_type == 'major':
                 major += 1
@@ -101,13 +104,44 @@ class ToolVersionManager:
                 logger.error(f"无效的递增类型: {increment_type}")
                 return current_version
             
-            new_version = f"{major}.{minor}.{patch}.{build}"
+            # 每位 0-9，超限进位（与 increment_version_advanced 一致）
+            major, minor, patch, build = self._apply_digit_carry(major, minor, patch, build)
+            
+            new_version = self.format_version(major, minor, patch, build)
             logger.info(f"版本号递增: {current_version} -> {new_version}")
             return new_version
             
         except ValueError as e:
             logger.error(f"版本号解析失败: {e}")
             return current_version
+    
+    def _apply_digit_carry(self, major: int, minor: int, revision: int, build: int) -> Tuple[int, int, int, int]:
+        """
+        对版本号各位做 0-9 进位归一化
+        
+        Args:
+            major, minor, revision, build: 版本号各部分
+            
+        Returns:
+            tuple: 进位归一化后的版本号
+        """
+        if build > 9:
+            build = 0
+            revision += 1
+        
+        if revision > 9:
+            revision = 0
+            minor += 1
+        
+        if minor > 9:
+            minor = 0
+            major += 1
+        
+        if major > 9:
+            logger.warning("版本号已达上限，保持 9.9.9.9")
+            return 9, 9, 9, 9
+        
+        return major, minor, revision, build
     
     def update_version(self, new_version: str) -> bool:
         """
@@ -158,12 +192,12 @@ class ToolVersionManager:
             'file_path': self.version_file_path
         }
     
-    def auto_increment_and_update(self, increment_type: str = 'patch') -> Tuple[bool, str]:
+    def auto_increment_and_update(self, increment_type: str = 'build') -> Tuple[bool, str]:
         """
         自动递增版本号并更新文件
         
         Args:
-            increment_type: 递增类型
+            increment_type: 递增类型，默认 'build'（末位加一并进位）
             
         Returns:
             Tuple[bool, str]: (是否成功, 新版本号)
@@ -203,7 +237,7 @@ class ToolVersionManager:
     def increment_version_advanced(self, major: int, minor: int, revision: int, build: int) -> Tuple[int, int, int, int]:
         """
         高级版本号递增（支持进位）
-        注意：每个版本部分限制在0-9范围内
+        每位限制在 0-9：1.0.0.9 -> 1.0.1.0
         
         Args:
             major, minor, revision, build: 当前版本号
@@ -211,66 +245,15 @@ class ToolVersionManager:
         Returns:
             tuple: 递增后的版本号
         """
-        # 递增build号
         build += 1
-        
-        # 处理进位
-        if build > 9:
-            build = 0
-            revision += 1
-            
-            if revision > 9:
-                revision = 0
-                minor += 1
-                
-                if minor > 9:
-                    minor = 0
-                    major += 1
-                    
-                    if major > 9:
-                        major = 9  # 限制在9
-                        minor = 9
-                        revision = 9
-                        build = 9
-        
-        return major, minor, revision, build
+        return self._apply_digit_carry(major, minor, revision, build)
     
     def increment_and_update_advanced(self) -> Tuple[bool, str]:
         """
         高级版本号递增并更新文件（用于构建脚本）
+        等同于按 build 位递增并进位。
         
         Returns:
             Tuple[bool, str]: (是否成功, 新版本号)
         """
-        try:
-            # 获取当前版本
-            current_version = self.get_current_version()
-            if not current_version:
-                logger.error("无法获取当前版本号")
-                return False, ""
-            
-            logger.info(f"当前版本: {current_version}")
-            
-            # 解析版本
-            version_parts = self.parse_version(current_version)
-            if not version_parts:
-                logger.error("版本号格式无效")
-                return False, ""
-            
-            # 递增版本
-            new_parts = self.increment_version_advanced(*version_parts)
-            new_version = self.format_version(*new_parts)
-            
-            logger.info(f"新版本: {new_version}")
-            
-            # 更新文件
-            if self.update_version(new_version):
-                logger.info(f"版本递增成功: {current_version} -> {new_version}")
-                return True, new_version
-            else:
-                logger.error("版本更新失败")
-                return False, ""
-                
-        except Exception as e:
-            logger.error(f"版本递增失败: {e}")
-            return False, ""
+        return self.auto_increment_and_update(increment_type='build')
