@@ -422,32 +422,36 @@ class IARPathManager:
             else:
                 logger.warning(f"未找到bin文件（项目名: {project_name}）")
         
-        # 自动获取flash偏移地址
+        # 自动获取flash偏移地址（始终从链接文件重新读取，避免ICF/SCT更换后仍用旧缓存）
         if 'binary_settings' not in updated_config:
             updated_config['binary_settings'] = {}
         
         current_bin_start = updated_config['binary_settings'].get('bin_start_address', 0)
-        logger.info(f"当前bin_start_address: 0x{current_bin_start:X}")
-        if current_bin_start == 0:
-            logger.info("尝试自动获取flash偏移地址...")
-            # 必须使用用户选择的配置
-            if not selected_config:
-                error_msg = "必须提供用户选择的配置（Debug或Release），请先选择配置"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
-            
-            logger.info(f"使用用户选择的配置: {selected_config.get('name', 'Unknown')}")
-            flash_offset = self.get_flash_offset_from_configuration(selected_config)
-            
-            if flash_offset:
-                updated_config['binary_settings']['bin_start_address'] = flash_offset
-                logger.info(f"自动获取flash偏移地址成功: 0x{flash_offset:X}")
+        logger.info(f"当前缓存的bin_start_address: 0x{current_bin_start:X}")
+        
+        if not selected_config:
+            error_msg = "必须提供用户选择的配置（Debug或Release），请先选择配置"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        logger.info(f"使用用户选择的配置重新读取flash偏移地址: {selected_config.get('name', 'Unknown')}")
+        # 始终重新解析工程文件获取最新ICF路径，再分析ICF内容
+        preferred_ewp = project_path if project_path and str(project_path).lower().endswith('.ewp') else None
+        flash_offset = self.get_flash_offset_from_configuration(
+            selected_config,
+            preferred_project_file=preferred_ewp
+        )
+        
+        if flash_offset:
+            updated_config['binary_settings']['bin_start_address'] = flash_offset
+            if current_bin_start and current_bin_start != flash_offset:
+                logger.info(f"flash偏移地址已更新: 0x{current_bin_start:X} -> 0x{flash_offset:X}")
             else:
-                error_msg = "无法从ICF文件获取flash偏移地址，请检查IAR项目配置"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
+                logger.info(f"自动获取flash偏移地址成功: 0x{flash_offset:X}")
         else:
-            logger.info(f"使用已配置的bin_start_address: 0x{current_bin_start:X}")
+            error_msg = "无法从ICF文件获取flash偏移地址，请检查IAR项目配置"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
         
         # 验证最终配置
         final_bin_start = updated_config['binary_settings'].get('bin_start_address', 0)
@@ -507,31 +511,83 @@ class IARPathManager:
             except:
                 return None
     
-    def get_flash_offset_from_configuration(self, configuration: Dict = None) -> Optional[int]:
+    def get_flash_offset_from_configuration(
+        self,
+        configuration: Dict = None,
+        preferred_project_file: Optional[str] = None
+    ) -> Optional[int]:
         """
-        从配置信息中获取flash偏移地址
+        获取flash偏移地址。
+        
+        默认会重新解析工程文件(.ewp)以获取最新ICF路径，再分析ICF内容，覆盖：
+        1. ICF文件内容被修改（路径不变）
+        2. 工程文件改指向另一个ICF
+        
+        若成功解析到最新配置，会就地更新传入的 configuration（含 icf_file）。
         
         Args:
-            configuration: 配置信息（如果提供，优先使用）
+            configuration: 当前选中的配置（用于确定配置名，并回写最新ICF路径）
+            preferred_project_file: 优先使用的.ewp路径
             
         Returns:
             int: flash偏移地址，失败返回None
         """
         try:
-            # 如果提供了配置信息，优先使用配置中的ICF文件
-            if configuration and configuration.get('icf_file'):
-                icf_file = configuration['icf_file']
-                if os.path.exists(icf_file):
-                    logger.info(f"使用配置中的ICF文件: {icf_file}")
-                    return self.iar_analyzer.analyze_icf_file(icf_file).get('intvec_start')
+            config_name = configuration.get('name') if configuration else None
+            old_icf = configuration.get('icf_file', '') if configuration else ''
+            
+            project_file = None
+            if preferred_project_file and os.path.exists(preferred_project_file):
+                project_file = preferred_project_file
+            else:
+                project_file = self.find_iar_project()
+            
+            if project_file:
+                logger.info(f"重新解析IAR工程文件获取ICF路径: {project_file}")
+                result = self.iar_analyzer.analyze_ewp_file(project_file)
+                if result and result.get('configurations'):
+                    matched = None
+                    if config_name:
+                        for config in result['configurations']:
+                            if config.get('name') == config_name:
+                                matched = config
+                                break
+                    if matched is None:
+                        matched = result['configurations'][0]
+                        logger.warning(
+                            f"未找到配置 '{config_name}'，使用: {matched.get('name')}"
+                        )
+                    
+                    new_icf = matched.get('icf_file', '')
+                    if configuration is not None:
+                        if old_icf and new_icf and os.path.normcase(os.path.abspath(old_icf)) != os.path.normcase(os.path.abspath(new_icf)):
+                            logger.info(f"工程ICF路径已更换: {old_icf} -> {new_icf}")
+                        configuration.update(matched)
+                    
+                    icf_file = new_icf
                 else:
-                    logger.warning(f"配置中的ICF文件不存在: {icf_file}")
+                    logger.warning(f"解析工程文件失败，回退使用配置中的ICF路径: {project_file}")
+                    icf_file = old_icf
+            else:
+                logger.warning("未找到IAR工程文件，回退使用配置中的ICF路径")
+                icf_file = old_icf
             
-            # 如果配置中没有ICF文件，直接返回None
-            logger.warning("配置中未提供ICF文件路径")
+            if not icf_file:
+                logger.warning("未找到ICF文件路径")
+                return None
             
-            logger.warning("未找到有效的ICF文件")
-            return None
+            if not os.path.exists(icf_file):
+                logger.warning(f"ICF文件不存在: {icf_file}")
+                return None
+            
+            logger.info(f"分析ICF文件: {icf_file}")
+            icf_result = self.iar_analyzer.analyze_icf_file(icf_file)
+            flash_offset = icf_result.get('intvec_start') if icf_result else None
+            if flash_offset:
+                logger.info(f"从ICF解析Flash起始地址: 0x{flash_offset:X}")
+            else:
+                logger.error(f"ICF文件中未找到Flash起始地址: {icf_file}")
+            return flash_offset
                 
         except Exception as e:
             logger.error(f"获取flash偏移地址失败: {e}")

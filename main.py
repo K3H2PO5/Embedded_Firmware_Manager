@@ -1149,8 +1149,8 @@ class MCUAutoBuildApp:
                     self.log_message("无法从main.c中提取版本号")
                     self.firmware_version_var.set("版本提取失败")
                 
-                # 更新flash起始地址显示
-                self._update_flash_start_addr_display()
+                # 重新从工程解析链接文件并刷新Flash起始地址
+                self._update_flash_start_addr_display(refresh_from_project=True)
                 
                 # 列出当前分支已发布的固件
                 published_firmware = self.version_manager.list_published_firmware()
@@ -1302,10 +1302,99 @@ class MCUAutoBuildApp:
         
         return True
     
-    def _update_flash_start_addr_display(self):
-        """更新flash起始地址显示"""
+    def _update_flash_start_addr_display(self, refresh_from_project: bool = False):
+        """
+        更新flash起始地址显示。
+        
+        Args:
+            refresh_from_project: True时重新解析工程文件获取最新ICF/SCT路径并分析地址；
+                                  False时仅显示当前配置中的缓存值。
+        """
         try:
-            # 从配置中获取flash起始地址
+            if refresh_from_project:
+                project_path = self.project_path_var.get()
+                if not project_path:
+                    self.flash_start_addr_var.set(self.get_text('not_checked'))
+                    self.log_message("未选择项目路径，无法刷新Flash起始地址")
+                    return
+                
+                compile_tool = self.config.get('compile_tool', 'IAR')
+                if not self.path_manager:
+                    self.path_manager = PathManagerFactory.create_path_manager(compile_tool, project_path)
+                else:
+                    self.path_manager.set_project_path(project_path)
+                
+                if compile_tool == 'IAR':
+                    preferred_project = (
+                        self.config.get('iar_project_path')
+                        or self.config.get('project_settings', {}).get('iar_project_path')
+                    )
+                    if not preferred_project or not os.path.exists(preferred_project):
+                        preferred_project = self.path_manager.find_iar_project()
+                else:
+                    preferred_project = (
+                        self.config.get('mdk_project_path')
+                        or self.config.get('project_settings', {}).get('mdk_project_path')
+                    )
+                    if not preferred_project or not os.path.exists(preferred_project):
+                        preferred_project = self.path_manager.find_mdk_project()
+                
+                if not self.selected_configuration:
+                    self.flash_start_addr_var.set("未设置")
+                    self.log_message("未选择编译配置，无法刷新Flash起始地址")
+                    return
+                
+                old_address = self.config.get('binary_settings', {}).get('bin_start_address', 0)
+                old_linker = (
+                    self.selected_configuration.get('icf_file')
+                    or self.selected_configuration.get('sct_file')
+                    or ''
+                )
+                
+                # get_flash_offset_from_configuration 会重新解析工程文件并回写最新链接路径
+                flash_offset = self.path_manager.get_flash_offset_from_configuration(
+                    self.selected_configuration,
+                    preferred_project_file=preferred_project
+                )
+                
+                if preferred_project:
+                    if compile_tool == 'IAR':
+                        self.config['iar_project_path'] = preferred_project
+                    else:
+                        self.config['mdk_project_path'] = preferred_project
+                
+                new_linker = (
+                    self.selected_configuration.get('icf_file')
+                    or self.selected_configuration.get('sct_file')
+                    or ''
+                )
+                if old_linker and new_linker:
+                    old_norm = os.path.normcase(os.path.abspath(old_linker))
+                    new_norm = os.path.normcase(os.path.abspath(new_linker))
+                    if old_norm != new_norm:
+                        self.log_message(f"工程链接文件已更换: {old_linker} -> {new_linker}")
+                    else:
+                        self.log_message(f"工程链接文件: {new_linker}")
+                elif new_linker:
+                    self.log_message(f"工程链接文件: {new_linker}")
+                
+                if not flash_offset:
+                    self.flash_start_addr_var.set("获取失败")
+                    self.log_message("无法从链接文件获取Flash起始地址")
+                    return
+                
+                if 'binary_settings' not in self.config:
+                    self.config['binary_settings'] = {}
+                self.config['binary_settings']['bin_start_address'] = flash_offset
+                self.flash_start_addr_var.set(f"0x{flash_offset:08X}")
+                
+                if old_address and old_address != flash_offset:
+                    self.log_message(f"Flash起始地址已更新: 0x{old_address:08X} -> 0x{flash_offset:08X}")
+                else:
+                    self.log_message(f"Flash起始地址: 0x{flash_offset:08X}")
+                return
+            
+            # 仅显示缓存值
             bin_start_address = self.config.get('binary_settings', {}).get('bin_start_address', 0)
             if bin_start_address > 0:
                 self.flash_start_addr_var.set(f"0x{bin_start_address:08X}")
@@ -1337,11 +1426,14 @@ class MCUAutoBuildApp:
                 else:
                     # 确保项目路径是最新的
                     self.path_manager.set_project_path(project_path)
+                
+                # 重新解析工程文件获取最新ICF/SCT，再更新Flash地址
+                self._update_flash_start_addr_display(refresh_from_project=True)
                     
-                # 调用auto_find_paths来自动设置bin起始地址等配置（使用用户选择的配置）
+                # auto_find_paths 内部也会通过 get_flash_offset_from_configuration 再确认一次
                 self.config = self.path_manager.auto_find_paths(self.config, self.selected_configuration)
                 
-                # 更新flash起始地址显示
+                # 更新flash起始地址显示（此时已是最新值）
                 self._update_flash_start_addr_display()
                 
                 # 1. 检查配置是否完整（放在auto_find_paths之后）

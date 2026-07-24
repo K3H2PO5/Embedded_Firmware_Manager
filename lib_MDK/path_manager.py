@@ -377,32 +377,36 @@ class MDKPathManager:
             else:
                 logger.warning(f"未找到bin文件（项目名: {project_name}）")
         
-        # 自动获取flash偏移地址
+        # 自动获取flash偏移地址（始终从链接文件重新读取，避免SCT更换后仍用旧缓存）
         if 'binary_settings' not in updated_config:
             updated_config['binary_settings'] = {}
         
         current_bin_start = updated_config['binary_settings'].get('bin_start_address', 0)
-        logger.info(f"当前bin_start_address: 0x{current_bin_start:X}")
-        if current_bin_start == 0:
-            logger.info("尝试自动获取flash偏移地址...")
-            # 必须使用用户选择的配置
-            if not selected_config:
-                error_msg = "必须提供用户选择的配置（Debug或Release），请先选择配置"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
-            
-            logger.info(f"使用用户选择的配置: {selected_config.get('name', 'Unknown')}")
-            flash_offset = self.get_flash_offset_from_configuration(selected_config)
-            
-            if flash_offset:
-                updated_config['binary_settings']['bin_start_address'] = flash_offset
-                logger.info(f"自动获取flash偏移地址成功: 0x{flash_offset:X}")
+        logger.info(f"当前缓存的bin_start_address: 0x{current_bin_start:X}")
+        
+        if not selected_config:
+            error_msg = "必须提供用户选择的配置（Debug或Release），请先选择配置"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        logger.info(f"使用用户选择的配置重新读取flash偏移地址: {selected_config.get('name', 'Unknown')}")
+        # 始终重新解析工程文件获取最新SCT路径，再分析SCT内容
+        preferred_uvprojx = project_path if project_path and str(project_path).lower().endswith('.uvprojx') else None
+        flash_offset = self.get_flash_offset_from_configuration(
+            selected_config,
+            preferred_project_file=preferred_uvprojx
+        )
+        
+        if flash_offset:
+            updated_config['binary_settings']['bin_start_address'] = flash_offset
+            if current_bin_start and current_bin_start != flash_offset:
+                logger.info(f"flash偏移地址已更新: 0x{current_bin_start:X} -> 0x{flash_offset:X}")
             else:
-                error_msg = "无法从SCT文件获取flash偏移地址，请检查MDK项目配置"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
+                logger.info(f"自动获取flash偏移地址成功: 0x{flash_offset:X}")
         else:
-            logger.info(f"使用已配置的bin_start_address: 0x{current_bin_start:X}")
+            error_msg = "无法从SCT文件获取flash偏移地址，请检查MDK项目配置"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
         
         # 验证最终配置
         final_bin_start = updated_config['binary_settings'].get('bin_start_address', 0)
@@ -449,31 +453,82 @@ class MDKPathManager:
             except:
                 return None
     
-    def get_flash_offset_from_configuration(self, configuration: Dict = None) -> Optional[int]:
+    def get_flash_offset_from_configuration(
+        self,
+        configuration: Dict = None,
+        preferred_project_file: Optional[str] = None
+    ) -> Optional[int]:
         """
-        从配置信息中获取flash偏移地址
+        获取flash偏移地址。
+        
+        默认会重新解析工程文件(.uvprojx)以获取最新SCT路径，再分析SCT内容，覆盖：
+        1. SCT文件内容被修改（路径不变）
+        2. 工程文件改指向另一个SCT
+        
+        若成功解析到最新配置，会就地更新传入的 configuration（含 sct_file）。
         
         Args:
-            configuration: 配置信息（如果提供，优先使用）
+            configuration: 当前选中的配置（用于确定配置名，并回写最新SCT路径）
+            preferred_project_file: 优先使用的.uvprojx路径
             
         Returns:
             int: flash偏移地址，失败返回None
         """
         try:
-            # 如果提供了配置信息，优先使用配置中的SCT文件
-            if configuration and configuration.get('sct_file'):
-                sct_file = configuration['sct_file']
-                if os.path.exists(sct_file):
-                    logger.info(f"使用配置中的SCT文件: {sct_file}")
-                    return self.mdk_analyzer.extract_flash_start_address_from_sct(sct_file)
+            config_name = configuration.get('name') if configuration else None
+            old_sct = configuration.get('sct_file', '') if configuration else ''
+            
+            project_file = None
+            if preferred_project_file and os.path.exists(preferred_project_file):
+                project_file = preferred_project_file
+            else:
+                project_file = self.find_mdk_project()
+            
+            if project_file:
+                logger.info(f"重新解析MDK工程文件获取SCT路径: {project_file}")
+                result = self.mdk_analyzer.analyze_uvprojx_file(project_file)
+                if result and result.get('configurations'):
+                    matched = None
+                    if config_name:
+                        for config in result['configurations']:
+                            if config.get('name') == config_name:
+                                matched = config
+                                break
+                    if matched is None:
+                        matched = result['configurations'][0]
+                        logger.warning(
+                            f"未找到配置 '{config_name}'，使用: {matched.get('name')}"
+                        )
+                    
+                    new_sct = matched.get('sct_file', '')
+                    if configuration is not None:
+                        if old_sct and new_sct and os.path.normcase(os.path.abspath(old_sct)) != os.path.normcase(os.path.abspath(new_sct)):
+                            logger.info(f"工程SCT路径已更换: {old_sct} -> {new_sct}")
+                        configuration.update(matched)
+                    
+                    sct_file = new_sct
                 else:
-                    logger.warning(f"配置中的SCT文件不存在: {sct_file}")
+                    logger.warning(f"解析工程文件失败，回退使用配置中的SCT路径: {project_file}")
+                    sct_file = old_sct
+            else:
+                logger.warning("未找到MDK工程文件，回退使用配置中的SCT路径")
+                sct_file = old_sct
             
-            # 如果配置中没有SCT文件，直接返回None
-            logger.warning("配置中未提供SCT文件路径")
+            if not sct_file:
+                logger.warning("未找到SCT文件路径")
+                return None
             
-            logger.warning("未找到有效的SCT文件")
-            return None
+            if not os.path.exists(sct_file):
+                logger.warning(f"SCT文件不存在: {sct_file}")
+                return None
+            
+            logger.info(f"分析SCT文件: {sct_file}")
+            flash_offset = self.mdk_analyzer.extract_flash_start_address_from_sct(sct_file)
+            if flash_offset:
+                logger.info(f"从SCT解析Flash起始地址: 0x{flash_offset:X}")
+            else:
+                logger.error(f"SCT文件中未找到Flash起始地址: {sct_file}")
+            return flash_offset
                 
         except Exception as e:
             logger.error(f"获取flash偏移地址失败: {e}")
