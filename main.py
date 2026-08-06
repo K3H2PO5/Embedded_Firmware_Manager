@@ -40,7 +40,7 @@ LANGUAGES = {
             'check_git': '检查Git状态',
             'check_version': '检查版本',
             'start_build': '开始编译',
-            'open_settings': '设置',
+            'open_settings': '设置/Setting',
             'open_firmware': '本地发布目录',
             'status_ready': '就绪',
             'status_checking': '检查中...',
@@ -123,7 +123,7 @@ LANGUAGES = {
             'msg_check_config_file_pragma': '请检查配置文件是否包含正确的#pragma location定义。',
             'git_commit_dialog_title': '提交信息 & Release Notes',
             'git_commit_dialog_message': '请输入本次提交的更新信息（将同时用于Git提交和Release Notes）：',
-            'git_commit_dialog_placeholder': '例如：修复了某个bug，添加了新功能等...\n\n注意：提交描述会自动添加"发布xxxx版本"前缀\n\n快捷键：Ctrl+Enter 确认，Escape 取消',
+            'git_commit_dialog_placeholder': '例如：修复了某个bug，添加了新功能等...\n\n最终格式：发布xxxx版本 - 当前分支最新提交信息 - 您的自定义内容\n\n快捷键：Ctrl+Enter 确认，Escape 取消',
             'git_commit_dialog_ok': '确定',
             'git_commit_dialog_cancel': '取消',
             'release_note_title': 'Release Notes',
@@ -182,7 +182,7 @@ LANGUAGES = {
             'check_git': '檢查Git狀態',
             'check_version': '檢查版本',
             'start_build': '開始編譯',
-            'open_settings': '設定',
+            'open_settings': '設定/Setting',
             'open_firmware': '本地發布目錄',
             'status_ready': '就緒',
             'status_checking': '檢查中...',
@@ -265,7 +265,7 @@ LANGUAGES = {
             'msg_check_config_file_pragma': '請檢查配置檔案是否包含正確的#pragma location定義。',
             'git_commit_dialog_title': '提交資訊 & Release Notes',
             'git_commit_dialog_message': '請輸入本次提交的更新資訊（將同時用於Git提交和Release Notes）：',
-            'git_commit_dialog_placeholder': '例如：修復了某個bug，添加了新功能等...\n\n注意：提交描述會自動添加"發布xxxx版本"前綴\n\n快捷鍵：Ctrl+Enter 確認，Escape 取消',
+            'git_commit_dialog_placeholder': '例如：修復了某個bug，添加了新功能等...\n\n最終格式：發布xxxx版本 - 當前分支最新提交資訊 - 您的自訂內容\n\n快捷鍵：Ctrl+Enter 確認，Escape 取消',
             'git_commit_dialog_ok': '確定',
             'git_commit_dialog_cancel': '取消',
             'release_note_title': 'Release Notes',
@@ -407,7 +407,7 @@ LANGUAGES = {
             'msg_check_config_file_pragma': 'Please check if the config file contains correct #pragma location definitions.',
             'git_commit_dialog_title': 'Commit Message & Release Notes',
             'git_commit_dialog_message': 'Please enter the update information for this commit (will be used for both Git commit and Release Notes):',
-            'git_commit_dialog_placeholder': 'e.g.: Fixed a bug, added new feature, etc...\n\nNote: "Release xxxx version" prefix will be added automatically\n\nShortcuts: Ctrl+Enter to confirm, Escape to cancel',
+            'git_commit_dialog_placeholder': 'e.g.: Fixed a bug, added new feature, etc...\n\nFinal format: Release xxxx version - latest commit on current branch - your custom notes\n\nShortcuts: Ctrl+Enter to confirm, Escape to cancel',
             'git_commit_dialog_ok': 'OK',
             'git_commit_dialog_cancel': 'Cancel',
             'release_note_title': 'Release Notes',
@@ -799,22 +799,22 @@ class MCUAutoBuildApp:
         iar_path_label = ttk.Label(info_frame, textvariable=self.iar_path_display_var, foreground="green")
         iar_path_label.grid(row=2, column=1, sticky=(tk.W, tk.E))
         
-        # Flash起始地址
-        ttk.Label(info_frame, text=self.get_text('flash_start_addr')).grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
-        self.flash_start_addr_var = tk.StringVar(value=self.get_text('not_checked'))
-        ttk.Label(info_frame, textvariable=self.flash_start_addr_var, foreground="purple").grid(
-            row=3, column=1, sticky=tk.W)
-        
         # Git分支
-        ttk.Label(info_frame, text=self.get_text('git_branch')).grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(info_frame, text=self.get_text('git_branch')).grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
         self.git_branch_var = tk.StringVar(value=self.get_text('not_checked'))
         ttk.Label(info_frame, textvariable=self.git_branch_var, foreground="teal").grid(
-            row=4, column=1, sticky=tk.W)
+            row=3, column=1, sticky=tk.W)
         
         # Git状态
-        ttk.Label(info_frame, text=self.get_text('git_status')).grid(row=5, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(info_frame, text=self.get_text('git_status')).grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
         self.git_status_var = tk.StringVar(value=self.get_text('not_checked'))
         ttk.Label(info_frame, textvariable=self.git_status_var, foreground="orange").grid(
+            row=4, column=1, sticky=tk.W)
+        
+        # Flash起始地址（位于Git状态之后、固件版本之前）
+        ttk.Label(info_frame, text=self.get_text('flash_start_addr')).grid(row=5, column=0, sticky=tk.W, padx=(0, 10))
+        self.flash_start_addr_var = tk.StringVar(value=self.get_text('not_checked'))
+        ttk.Label(info_frame, textvariable=self.flash_start_addr_var, foreground="purple").grid(
             row=5, column=1, sticky=tk.W)
         
         # 固件版本
@@ -1526,8 +1526,19 @@ class MCUAutoBuildApp:
                 
                 # 总是显示Git提交信息输入弹窗，让用户输入更新信息
                 self.update_status(self.get_text('input_update_info'))
+                # 获取当前分支最新一次提交信息，用于自动填写
+                latest_commit_message = ""
+                if self.git_manager:
+                    git_info = self.git_manager.get_commit_info()
+                    latest_commit_message = (git_info.get('message') or "").strip()
+                    if latest_commit_message:
+                        self.log_message(f"当前分支最新提交信息: {latest_commit_message}")
+                
                 default_message = f"发布{next_version}版本"
-                commit_message = self.show_git_commit_dialog(default_message)
+                commit_message = self.show_git_commit_dialog(
+                    default_message,
+                    latest_commit_message=latest_commit_message
+                )
                 
                 if not commit_message:  # 用户取消输入
                     self.log_message("用户取消了更新信息输入")
@@ -1535,8 +1546,11 @@ class MCUAutoBuildApp:
                                                "未输入更新信息，是否继续编译？\n建议输入更新信息用于Release Notes。")
                     if not result:
                         return
-                    # 如果用户选择继续，使用默认信息
-                    commit_message = default_message
+                    # 如果用户选择继续，使用：发布版本 + 最新提交信息
+                    parts = [default_message]
+                    if latest_commit_message:
+                        parts.append(latest_commit_message)
+                    commit_message = " - ".join(parts)
                 
                 # 如果有未提交的更改，进行Git提交
                 if has_changes:
@@ -2330,12 +2344,16 @@ class MCUAutoBuildApp:
         except Exception as e:
             messagebox.showerror(self.get_text('msg_error'), f"保存设置失败: {e}")
     
-    def show_git_commit_dialog(self, default_message: str = "") -> str:
+    def show_git_commit_dialog(self, default_message: str = "",
+                               latest_commit_message: str = "") -> str:
         """
         显示Git提交信息输入弹窗
         
+        最终提交格式：发布XXXX版本 - 当前分支最新提交信息 - 用户自定义内容
+        
         Args:
-            default_message: 默认提交信息
+            default_message: 默认前缀，如 "发布V1.0.0.1版本"
+            latest_commit_message: 当前分支最新一次提交信息
             
         Returns:
             str: 用户输入的提交信息，如果取消则返回空字符串
@@ -2343,7 +2361,7 @@ class MCUAutoBuildApp:
         # 创建弹窗
         dialog = tk.Toplevel(self.root)
         dialog.title(self.get_text('git_commit_dialog_title'))
-        dialog.geometry("500x300")
+        dialog.geometry("500x340")
         dialog.resizable(True, True)
         
         # 设置对话框图标
@@ -2367,9 +2385,23 @@ class MCUAutoBuildApp:
         
         # 说明文本
         message_label = ttk.Label(main_frame, text=self.get_text('git_commit_dialog_message'))
-        message_label.pack(anchor=tk.W, pady=(0, 10))
+        message_label.pack(anchor=tk.W, pady=(0, 6))
         
-        # 文本输入框
+        # 显示将自动拼接的前缀与最新提交信息
+        auto_parts = [default_message] if default_message else []
+        if latest_commit_message:
+            auto_parts.append(latest_commit_message)
+        auto_preview = " - ".join(auto_parts) if auto_parts else ""
+        if auto_preview:
+            preview_label = ttk.Label(
+                main_frame,
+                text=f"自动填写: {auto_preview}",
+                foreground="gray",
+                wraplength=440
+            )
+            preview_label.pack(anchor=tk.W, pady=(0, 10))
+        
+        # 文本输入框（用户自定义内容）
         text_frame = ttk.Frame(main_frame)
         text_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
         
@@ -2389,16 +2421,24 @@ class MCUAutoBuildApp:
         # 结果变量
         result = {"message": ""}
         
+        def _build_commit_message(user_input: str) -> str:
+            """组装：发布XXXX版本 + 最新提交信息 + 用户自定义内容"""
+            parts = []
+            if default_message:
+                parts.append(default_message)
+            if latest_commit_message:
+                parts.append(latest_commit_message)
+            if user_input:
+                parts.append(user_input)
+            return " - ".join(parts) if parts else ""
+        
         def on_ok():
             """确定按钮回调"""
             user_input = text_widget.get("1.0", tk.END).strip()
-            # 如果用户没有输入内容或只输入了占位符，使用默认消息
+            # 如果用户没有输入内容或只输入了占位符，则不含自定义部分
             if not user_input or user_input == self.get_text('git_commit_dialog_placeholder'):
-                message = default_message
-            else:
-                # 在用户输入前添加"发布xxxx版本"前缀
-                message = f"{default_message} - {user_input}"
-            result["message"] = message
+                user_input = ""
+            result["message"] = _build_commit_message(user_input)
             dialog.destroy()
         
         def on_cancel():
@@ -2555,16 +2595,26 @@ class MCUAutoBuildApp:
         
         Args:
             commit_message: 原始提交信息
+                格式通常为：发布XXXX版本 - 最新提交信息 - 用户自定义内容
             
         Returns:
             str: 格式化后的文本
         """
         try:
-            # 移除可能的前缀（如"发布V1.0.0.1版本 - "）
+            # 提取用户自定义部分：去掉“发布xxxx版本”以及中间的最新提交信息
+            user_input = commit_message
             if " - " in commit_message:
-                # 提取用户实际输入的部分
-                user_input = commit_message.split(" - ", 1)[1]
-            else:
+                parts = commit_message.split(" - ")
+                # 至少两段：发布版本 / 最新提交；三段及以上时最后一段为用户自定义
+                if len(parts) >= 3:
+                    user_input = " - ".join(parts[2:]).strip()
+                elif len(parts) == 2:
+                    # 无用户自定义时，用最新提交信息作为变更说明
+                    user_input = parts[1].strip()
+                else:
+                    user_input = commit_message
+            
+            if not user_input:
                 user_input = commit_message
             
             # 按分号和句号分割文本
